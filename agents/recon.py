@@ -181,6 +181,9 @@ while True:
     response_message = completion.choices[0].message
     messages.append(response_message)
 
+    print(f"[DEBUG] content: {response_message.content}")
+    print(f"[DEBUG] tool_calls count: {len(response_message.tool_calls) if response_message.tool_calls else 0}")    
+
     if response_message.content:
         print("Agent's reasoning:")
         print(response_message.content)
