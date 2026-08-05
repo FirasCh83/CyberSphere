@@ -7,6 +7,7 @@ from tools.nmap import run_service_detection, run_os_detection, run_default_scri
 from tools.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis
 from utilities.state import ReconState
 from utilities.parser import parse_nmap_output
+from utilities.parser import parse_httpx_output
 import json
 
 load_dotenv()
@@ -17,7 +18,7 @@ client = OpenAI(
 
 
 
-tools = [
+tools_nmap = [
     {
         "type": "function",
         "function": {
@@ -127,6 +128,10 @@ tools = [
             "strict": True,
         },
     },
+    
+]
+
+tools_httpx = [
     {
         "type": "function",
         "function": {
@@ -207,6 +212,8 @@ tools = [
         },
     }
 ]
+
+tools = tools_nmap + tools_httpx
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -305,6 +312,13 @@ while True:
     state.open_ports = parsed["open_ports"] or state.open_ports
     state.services = {p["port"]: p["service"] for p in parsed["open_ports"] or state.services}
     state.findings.extend(parsed["key_findings"])
+    if tool_name in ["run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"]:
+        httpx_parsed = parse_httpx_output(result)
+        state.web_services.extend(httpx_parsed["web_services"])
+        state.technologies.extend(httpx_parsed["technologies"])
+        state.tls_issues.extend(httpx_parsed["tls_issues"])
+        state.missing_headers.extend(httpx_parsed["missing_headers"])
+        state.findings.extend(httpx_parsed["key_findings"])
     
     print(f"Result from {tool_name}:")
     print(result)

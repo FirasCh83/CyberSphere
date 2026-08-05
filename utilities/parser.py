@@ -85,5 +85,14 @@ def parse_httpx_output(raw: str) -> Dict:
             title = data.get("title", "")
             if any(x in title.lower() for x in ["admin", "login", "dashboard", "cpanel", "wp-admin"]):
                 result["key_findings"].append(f"Sensitive page found: {title} at {service['url']}")
+        #Missing security headers
+        headers = data.get("headers", {})
+        if headers:
+            headers_lower = {k.lower(): v for k, v in headers.items()}
+            for h in security_headers:
+                if h not in headers_lower:
+                    result["missing_headers"].append(f"Missing security header: {h} on {service['url']}")
+
+                    
     result["technologies"] = list(set(result["technologies"]))
     return result
