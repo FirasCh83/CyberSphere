@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from tools.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
+from utilities.state import ReconState
+from utilities.parser import parse_nmap_output
 import json
 
 load_dotenv()
@@ -11,6 +13,7 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
+
 
 
 tools = [
@@ -127,6 +130,8 @@ tools = [
 
 target = input("Enter the target IP address or hostname: ")
 
+state = ReconState(target=target)
+
 System_prompt = """You are an expert penetration tester performing reconnaissance on an authorized target.
 
 You operate in a strict SEQUENTIAL reasoning loop:
@@ -173,9 +178,18 @@ def call_tool(name, target):
         raise ValueError(f"Unknown tool name: {name}")
     
 while True:
+    state_message = {
+        "role": "user",
+        "content": f"Current state:\n{state.summary()}"
+    }
+
+    context = (
+        [messages[0]] + [messages[1]] + [state_message]+ messages[-4:]
+    )
+
     completion = client.chat.completions.create(
     model= "openrouter/free",
-    messages= messages,
+    messages= context,
     tools=tools,
     )
     response_message = completion.choices[0].message
@@ -198,6 +212,13 @@ while True:
 
     print(f"Running : {tool_name}")
     result = call_tool(tool_name, target)
+
+    parsed = parse_nmap_output(result)
+
+    state.scans_run.append(tool_name)
+    state.open_ports = parsed["open_ports"] or state.open_ports
+    state.services = {p["port"]: p["service"] for p in parsed["open_ports"] or state.services}
+    state.findings.extend(parsed["key_findings"])
     
     print(f"Result from {tool_name}:")
     print(result)
@@ -205,7 +226,7 @@ while True:
     messages.append(
         {"role": "tool",
          "tool_call_id": tool_call.id,
-         "content": json.dumps(result)}
+         "content": f"PARSED RESULTS:\n{parsed}\n\nSTATE:\n{state.summary()}"}
     )
     
 print(completion)
