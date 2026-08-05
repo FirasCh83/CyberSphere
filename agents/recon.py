@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from tools.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
+import json
 
 load_dotenv()
 client = OpenAI(
@@ -126,18 +127,34 @@ tools = [
 
 target = input("Enter the target IP address or hostname: ")
 
-System_prompt = "You are a reconnaissance agent in a fully authenticated penetration testing envirement,use the tools provided in order to gather the most amout of information so the penetration test proceeds"
+System_prompt = """You are an expert penetration tester performing reconnaissance on an authorized target.
+
+You operate in a strict SEQUENTIAL reasoning loop:
+1. Call ONE tool at a time
+2. Wait for the result
+3. Analyze the output carefully
+4. Decide what to do next based on what you learned
+
+RULES:
+- NEVER call more than one tool at a time
+- Each tool call must be justified by what you already know
+- Start with the fastest, broadest scan first, then drill down
+- Only run deeper/slower scans if earlier results justify it
+- Stop when you have enough information for a useful pentest report
+
+After each result, reason out loud:
+- What did I find?
+- Does this change my plan?
+- What is the single most valuable next scan, or should I stop?
+
+When you have gathered sufficient information, stop calling tools and summarize your findings."""
 
 messages = [
     {"role": "system", "content": System_prompt},
     {"role": "user", "content": f"Please perform reconnaissance on the target: {target}."}
 ]
 
-completion = client.chat.completions.create(
-    model= "openrouter/free",
-    messages= messages,
-    tools=tools,
-)
+
 
 def call_tool(name, target):
     if name == "run_service_detection":
@@ -155,28 +172,39 @@ def call_tool(name, target):
     else:
         raise ValueError(f"Unknown tool name: {name}")
     
-for tool_call in completion.choices[0].message.tool_calls:
-    tool_name = tool_call.function.name
-    messages.append(completion.choices[0].message)
-
-    result = call_tool(tool_name, target)
-    messages.append(
-        {"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(result)}
-    )    
-
-#class ToolResponse(BaseModel):
- #   tool_name: str = Field(..., description="The name of the tool that was called.")
- #   target: str = Field(..., description="The target IP address or hostname.")
-  #  output: str = Field(..., description="The output from the tool execution.")
-
-
-completion_2= client.beta.chat.completions.parse(
+while True:
+    completion = client.chat.completions.create(
     model= "openrouter/free",
     messages= messages,
-    tools= tools,
-)
+    tools=tools,
+    )
+    response_message = completion.choices[0].message
+    messages.append(response_message)
 
-final_response = completion_2.choices[0].message.parsed
-print(final_response)
+    if response_message.content:
+        print("Agent's reasoning:")
+        print(response_message.content)
+    
+
+    if not response_message.tool_calls:
+        print("No tool calls detected. Stopping.")
+        print(response_message.content)
+        break
+    tool_call= response_message.tool_calls[0]
+    tool_name = tool_call.function.name
+
+    print(f"Running : {tool_name}")
+    result = call_tool(tool_name, target)
+    
+    print(f"Result from {tool_name}:")
+    print(result)
+
+    messages.append(
+        {"role": "tool",
+         "tool_call_id": tool_call.id,
+         "content": json.dumps(result)}
+    )
+    
+print(completion)
 
     

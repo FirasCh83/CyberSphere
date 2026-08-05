@@ -9,19 +9,17 @@ def execute_nmap_scan(args: List[str]) -> Any:
     except docker.errors.DockerException as e:
         raise RuntimeError(f"Failed to connect to Docker: {e}")
     
-    cap_add = ["NET_RAW"]
+    needs_caps = any(f in args for f in ["-sU", "-O", "-sS"])
     try:
         output = client.containers.run(
             image=image,
             command=args,
-            cap_add=cap_add if "-sU" or "-O" or "-sS" in args else None,
+            cap_add=["NET_RAW", "NET_ADMIN"] if needs_caps else ["NET_RAW"],
             remove=True,
             stdout=True,
             stderr=True,
             network_mode= "bridge",
-            mem_limit="256m",
-            cpu_period=100000,
-            cpu_quota=50000,
+            dns= ["8.8.8.8", "1.1.1.1"],
             detach=False,
         )
         result = output.decode("utf-8", errors= "replace")
