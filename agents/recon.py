@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from tools.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
+from tools.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis
 from utilities.state import ReconState
 from utilities.parser import parse_nmap_output
 import json
@@ -125,6 +126,85 @@ tools = [
             },
             "strict": True,
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_http_probe",
+            "description": (
+                "Probe an HTTP/HTTPS service to collect basic web information, "
+                "including HTTP status code, page title, detected technologies, "
+                "server banner, and redirect information."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target URL including the protocol and port if known "
+                            "(e.g. 'http://192.168.1.10:80' or "
+                            "'https://example.com:443')."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_http_tls_analysis",
+            "description": (
+                "Gather TLS and HTTPS security information from a web service, "
+                "including certificate details, TLS configuration, and security "
+                "headers. Use only against HTTPS-enabled targets."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target HTTPS URL including the protocol and port if "
+                            "known (e.g. 'https://192.168.1.10:443')."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_http_header_analysis",
+            "description": (
+                "Collect HTTP response headers from a web service, including "
+                "server banners, cookies, and security-related headers for "
+                "reconnaissance."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target URL including the protocol and port if known "
+                            "(e.g. 'http://192.168.1.10:8080')."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
     }
 ]
 
@@ -174,6 +254,12 @@ def call_tool(name, target):
         return run_vulnerability_scan(target)
     elif name == "run_full_port_scan":
         return run_full_port_scan(target)
+    elif name == "run_http_probe":
+        return run_http_probe(target)
+    elif name == "run_http_tls_analysis":
+        return run_http_tls_analysis(target)
+    elif name == "run_http_header_analysis":
+        return run_http_header_analysis(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
     

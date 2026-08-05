@@ -11,7 +11,7 @@ def run_http_probe(target: str) -> List[str]:
     - Detect technologies"""
     return execute_httpx_scan([
         "-status-code",
-        "title",
+        "-title",
         "-tech-detect",
         "-server",
         "-follow-redirects",
