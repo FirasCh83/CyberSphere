@@ -228,6 +228,11 @@ while True:
          "tool_call_id": tool_call.id,
          "content": f"PARSED RESULTS:\n{parsed}\n\nSTATE:\n{state.summary()}"}
     )
+
+    if not response_message.content:
+        print("No reasoning provided. Stopping.")
+        break
+    
     
 print(completion)
 
