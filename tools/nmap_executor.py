@@ -18,6 +18,7 @@ def execute_nmap_scan(args: List[str]) -> Any:
             remove=True,
             stdout=True,
             stderr=True,
+            extra_hosts={"host.docker.internal": "host-gateway"},
             network_mode= "bridge",
             dns= ["8.8.8.8", "1.1.1.1"],
             detach=False,
