@@ -3,7 +3,7 @@ import docker.errors
 from typing import Any, List
 
 def execute_httpx_scan(args: List[str]) -> Any:
-    image = "projectdiscovery/httpx:latest"
+    image = "cybersphere-httpx:latest"
     try:
         client = docker.from_env()
     except docker.errors.DockerException as e:
