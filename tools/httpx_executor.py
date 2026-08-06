@@ -19,6 +19,12 @@ def execute_httpx_scan(args: List[str]) -> Any:
             extra_hosts={"host.docker.internal": "host-gateway"},
             network_mode= "bridge",
             dns= ["8.8.8.8", "1.1.1.1"],
+            volumes= {
+                "httpx-cache": {
+                    "bind": "/root/.dit",
+                    "mode": "rw"
+                }
+            },
             detach=False,
         )
         result = output.decode("utf-8", errors= "replace")
