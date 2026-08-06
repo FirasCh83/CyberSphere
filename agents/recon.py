@@ -23,31 +23,19 @@ tools_nmap = [
         "type": "function",
         "function": {
             "name": "run_service_detection",
-            "description": "Identify services and versions running on the target using Nmap service detection.",
+            "description": (
+                "Runs 'nmap -sV -Pn -T4' against the target. "
+                "Scans the most common 1000 TCP ports, identifies open ports, running "
+                "services and their exact versions (e.g. Apache 2.2.8, OpenSSH 4.7p1). "
+                "Fast scan (~20-30s). "
+                
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "target": {
                         "type": "string",
-                        "description": "Target IP address or hostname."
-                    }
-                },
-                "required": ["target"],
-                "additionalProperties": False
-            },
-            "strict": True,
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_os_detection",
-            "description": "Attempt to identify the operating system running on the target.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "target": {
-                        "type": "string"
+                        "description": "Target IP address or hostname e.g. '192.168.56.107' or 'example.com'."
                     }
                 },
                 "required": ["target"],
@@ -60,31 +48,17 @@ tools_nmap = [
         "type": "function",
         "function": {
             "name": "run_default_scripts",
-            "description": "Execute Nmap default NSE scripts against the target.",
+            "description": (
+                "Runs 'nmap -sC -sV -Pn -T4' against the target. Executes Nmap's "
+                "default NSE scripts on top of service detection — extracts extra "
+                "info like anonymous FTP access, SMB details, SSL certificates, SSH "
+                "host keys, HTTP page titles, and more. Use this"
+                "when you want deeper info on what was found. Medium speed (~60-90s)."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "target": {
-                        "type": "string"
-                    }
-                },
-                "required": ["target"],
-                "additionalProperties": False
-            },
-            "strict": True,
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_udp_scan",
-            "description": "Scan UDP ports on the target.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "target": {
-                        "type": "string"
-                    }
+                    "target": {"type": "string"}
                 },
                 "required": ["target"],
                 "additionalProperties": False
@@ -96,13 +70,38 @@ tools_nmap = [
         "type": "function",
         "function": {
             "name": "run_vulnerability_scan",
-            "description": "Run the Nmap vulnerability NSE scripts against the target.",
+            "description": (
+                "Runs 'nmap -sV --script vuln -Pn -T4' against the target. Runs "
+                "Nmap's vuln NSE scripts to check for known CVEs and misconfigurations "
+                "— detects things like vsftpd backdoor, MS17-010 (EternalBlue), "
+                "SSL POODLE, Heartbleed, SQL injection vectors, CSRF, XSS. "
+                "Run this only if you want to check for known vulnerabilities after open ports and"
+                "services are found. Slow scan (~5-8 min)."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "target": {
-                        "type": "string"
-                    }
+                    "target": {"type": "string"}
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_os_detection",
+            "description": (
+                "Runs 'nmap -O -Pn -T4' against the target. Attempts to fingerprint "
+                "the operating system based on TCP/IP stack behavior."
+                "May return no result if insufficient closed ports exist. Fast (~10s)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {"type": "string"}
                 },
                 "required": ["target"],
                 "additionalProperties": False
@@ -114,13 +113,16 @@ tools_nmap = [
         "type": "function",
         "function": {
             "name": "run_full_port_scan",
-            "description": "Scan all 65535 TCP ports on the target.",
+            "description": (
+                "Runs 'nmap -p- -Pn -T4' against the target. Scans ALL 65535 TCP "
+                "ports instead of just the default 1000. Use this only when "
+                "run_service_detection found very few open ports and you suspect "
+                "services are running on non-standard ports. Very slow (~10-20 min)."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "target": {
-                        "type": "string"
-                    }
+                    "target": {"type": "string"}
                 },
                 "required": ["target"],
                 "additionalProperties": False
@@ -128,7 +130,27 @@ tools_nmap = [
             "strict": True,
         },
     },
-    
+    {
+        "type": "function",
+        "function": {
+            "name": "run_udp_scan",
+            "description": (
+                "Runs 'nmap -sU -Pn -T3' against the target. Scans common UDP ports "
+                "to find services like DNS (53), SNMP (161), TFTP (69), NTP (123). "
+                "Only run this if UDP services are suspected or SNMP/DNS exposure is "
+                "a concern. Very slow (~15-20 min)"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {"type": "string"}
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
 ]
 
 tools_httpx = [
@@ -137,20 +159,19 @@ tools_httpx = [
         "function": {
             "name": "run_http_probe",
             "description": (
-                "Probe an HTTP/HTTPS service to collect basic web information, "
-                "including HTTP status code, page title, detected technologies, "
-                "server banner, and redirect information."
+                "Runs httpx with '-status-code -title -tech-detect -server "
+                "-follow-redirects -json' against a URL. finds open HTTP ports (80, 8080, 8443, 8180 "
+                "etc). Returns HTTP status code, page title, detected technologies "
+                "(WordPress, Laravel, jQuery versions etc), server banner, and "
+                "redirect chain. Fast (~5s). Target must include protocol: "
+                "for example'http://192.168.56.107:80'."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "target": {
                         "type": "string",
-                        "description": (
-                            "Target URL including the protocol and port if known "
-                            "(e.g. 'http://192.168.1.10:80' or "
-                            "'https://example.com:443')."
-                        )
+                        "description": "Full URL with protocol and port e.g. 'http://192.168.56.107:80' or 'https://example.com:443'."
                     }
                 },
                 "required": ["target"],
@@ -164,19 +185,17 @@ tools_httpx = [
         "function": {
             "name": "run_http_tls_analysis",
             "description": (
-                "Gather TLS and HTTPS security information from a web service, "
-                "including certificate details, TLS configuration, and security "
-                "headers. Use only against HTTPS-enabled targets."
+                "Runs httpx with '-tls-grab -status-code -title -json' against an "
+                "HTTPS URL. Extracts TLS certificate details (expiry date, issuer, "
+                "SANs), TLS version (flags weak TLS 1.0/1.1/SSLv3), and cipher "
+                "suites.Fast (~5s). Target must use https://."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "target": {
                         "type": "string",
-                        "description": (
-                            "Target HTTPS URL including the protocol and port if "
-                            "known (e.g. 'https://192.168.1.10:443')."
-                        )
+                        "description": "HTTPS URL with port e.g. 'https://192.168.56.107:443'."
                     }
                 },
                 "required": ["target"],
@@ -190,19 +209,20 @@ tools_httpx = [
         "function": {
             "name": "run_http_header_analysis",
             "description": (
-                "Collect HTTP response headers from a web service, including "
-                "server banners, cookies, and security-related headers for "
-                "reconnaissance."
+                "Runs httpx with '-status-code -server -header -json' against a URL. "
+                "Collects all HTTP response headers to check for missing security "
+                "headers (Strict-Transport-Security, Content-Security-Policy, "
+                "X-Frame-Options, X-Content-Type-Options) and exposed server banners. "
+                "Missing security headers are a common finding in small business "
+                "audits. "
+                "Fast (~5s)."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "target": {
                         "type": "string",
-                        "description": (
-                            "Target URL including the protocol and port if known "
-                            "(e.g. 'http://192.168.1.10:8080')."
-                        )
+                        "description": "Full URL with protocol and port e.g. 'http://192.168.56.107:80'."
                     }
                 },
                 "required": ["target"],
@@ -210,7 +230,7 @@ tools_httpx = [
             },
             "strict": True,
         },
-    }
+    },
 ]
 
 tools = tools_nmap + tools_httpx
