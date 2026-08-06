@@ -301,7 +301,7 @@ while True:
     )
 
     completion = client.chat.completions.create(
-    model= "openrouter/free",
+    model= "laguna-xs-2.1:free",
     messages= context,
     tools=tools,
     )
@@ -326,19 +326,25 @@ while True:
     print(f"Running : {tool_name}")
     result = call_tool(tool_name, target)
 
-    parsed = parse_nmap_output(result)
+    httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
+
+    if tool_name in httpx_tools:
+        # httpx output — don't run nmap parser on it
+        parsed = parse_httpx_output(result)
+        state.web_services.extend(parsed["web_services"])
+        state.technologies.extend(parsed["technologies"])
+        state.tls_issues.extend(parsed["tls_issues"])
+        state.missing_headers.extend(parsed["missing_headers"])
+        state.findings.extend(parsed["key_findings"])
+    else:
+        # nmap output — safe to parse as nmap
+        parsed = parse_nmap_output(result)
+        if parsed["open_ports"]:          # only update if parser found something
+            state.open_ports = parsed["open_ports"]
+            state.services = {p["port"]: p["service"] for p in parsed["open_ports"]}
+        state.findings.extend(parsed["key_findings"])
 
     state.scans_run.append(tool_name)
-    state.open_ports = parsed["open_ports"] or state.open_ports
-    state.services = {p["port"]: p["service"] for p in parsed["open_ports"] or state.services}
-    state.findings.extend(parsed["key_findings"])
-    if tool_name in ["run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"]:
-        httpx_parsed = parse_httpx_output(result)
-        state.web_services.extend(httpx_parsed["web_services"])
-        state.technologies.extend(httpx_parsed["technologies"])
-        state.tls_issues.extend(httpx_parsed["tls_issues"])
-        state.missing_headers.extend(httpx_parsed["missing_headers"])
-        state.findings.extend(httpx_parsed["key_findings"])
     
     print(f"Result from {tool_name}:")
     print(result)
