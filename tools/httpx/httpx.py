@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from tools.httpx_executor import execute_httpx_scan
+from tools.httpx.httpx_executor import execute_httpx_scan
 
 def run_http_probe(target: str) -> List[str]:
     """

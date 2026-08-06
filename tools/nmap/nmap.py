@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from tools.nmap_executor import execute_nmap_scan
+from tools.nmap.nmap_executor import execute_nmap_scan
 
 def run_service_detection(target: str) -> List[str]:
     return execute_nmap_scan(["-sV", "-Pn", "-T4", target])
