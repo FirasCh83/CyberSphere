@@ -9,7 +9,7 @@ def run_http_probe(target: str) -> List[str]:
     - Get status code
     - Get title
     - Detect technologies"""
-    return execute_httpx_scan([
+"""     return execute_httpx_scan([
         "-status-code",
         "-title",
         "-tech-detect",
@@ -17,7 +17,7 @@ def run_http_probe(target: str) -> List[str]:
         "-follow-redirects",
         target
     
-    ])
+    ]) """
 
 def run_http_tls_analysis(target: str) -> List[str]:
     """
@@ -26,12 +26,12 @@ def run_http_tls_analysis(target: str) -> List[str]:
     - TLS details
     - Security headers
     """
-    return execute_httpx_scan([
+"""     return execute_httpx_scan([
         "-tls-grab",
         "-status-code",
         "-title",
         target
-    ])
+    ]) """
 
 def run_http_header_analysis(target: str) -> List[str]:
     """
@@ -40,10 +40,10 @@ def run_http_header_analysis(target: str) -> List[str]:
     - Cookies*
     - Security headers
     """
-    return execute_httpx_scan([
+"""     return execute_httpx_scan([
         "-status-code",
         "-server",
         "-header",
         target
     ])
-
+ """

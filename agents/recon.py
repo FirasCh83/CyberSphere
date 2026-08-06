@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from tools.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
-from tools.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis
+""" from tools.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis """
 from utilities.state import ReconState
 from utilities.parser import parse_nmap_output
 from utilities.parser import parse_httpx_output
@@ -153,7 +153,7 @@ tools_nmap = [
     },
 ]
 
-tools_httpx = [
+""" tools_httpx = [
     {
         "type": "function",
         "function": {
@@ -231,9 +231,9 @@ tools_httpx = [
             "strict": True,
         },
     },
-]
+] """
 
-tools = tools_nmap + tools_httpx
+tools = tools_nmap 
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -281,12 +281,6 @@ def call_tool(name, target):
         return run_vulnerability_scan(target)
     elif name == "run_full_port_scan":
         return run_full_port_scan(target)
-    elif name == "run_http_probe":
-        return run_http_probe(target)
-    elif name == "run_http_tls_analysis":
-        return run_http_tls_analysis(target)
-    elif name == "run_http_header_analysis":
-        return run_http_header_analysis(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
     

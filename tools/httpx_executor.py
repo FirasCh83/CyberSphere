@@ -1,4 +1,4 @@
-import docker
+""" import docker
 import docker.errors
 from typing import Any, List
 
@@ -30,4 +30,4 @@ def execute_httpx_scan(args: List[str]) -> Any:
         result = output.decode("utf-8", errors= "replace")
         return result
     except docker.errors.ContainerError as e:
-        return e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e)
+        return e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e) """
