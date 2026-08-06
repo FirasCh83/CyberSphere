@@ -301,7 +301,7 @@ while True:
     )
 
     completion = client.chat.completions.create(
-    model= "laguna-xs-2.1:free",
+    model= "laguna-s-2.1:free",
     messages= context,
     tools=tools,
     )

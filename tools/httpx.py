@@ -15,7 +15,6 @@ def run_http_probe(target: str) -> List[str]:
         "-tech-detect",
         "-server",
         "-follow-redirects",
-        "-json",
         target
     
     ])
@@ -31,7 +30,6 @@ def run_http_tls_analysis(target: str) -> List[str]:
         "-tls-grab",
         "-status-code",
         "-title",
-        "-json",
         target
     ])
 
@@ -46,7 +44,6 @@ def run_http_header_analysis(target: str) -> List[str]:
         "-status-code",
         "-server",
         "-header",
-        "-json",
         target
     ])
 
