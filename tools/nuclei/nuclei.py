@@ -86,12 +86,3 @@ def run_wordpress_scan(target: str) -> List[str]:
         "-silent",
     ])
 
-def run_tomcat_scan(target: str) -> List[str]:
-    return execute_nuclei_scan([
-        "-u",
-        target,
-        "-tags",
-        "tomcat",
-        "-jsonl",
-        "-silent",
-    ])
