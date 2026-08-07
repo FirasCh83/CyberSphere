@@ -1,4 +1,4 @@
-from pydantic import Basemodel, Field
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from tools.whatweb.whatweb_executor import execute_whatweb_scan
 

@@ -16,6 +16,7 @@ def execute_whois_scan(args: List[str]) -> Any:
             remove= True,
             stdout= True,
             stderr= True,
+            network_mode= "bridge",
             detach= False,
         )
         result = output.decode("utf-8", errors= "replace")

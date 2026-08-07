@@ -6,8 +6,9 @@ from pydantic import BaseModel, Field
 from tools.nmap.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
 """ from tools.httpx.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis """
 from tools.whois.whois import run_whois_lookup
+from tools.whatweb.whatweb import run_basic_fingerprint, run_aggressive_fingerprint, run_full_fingerprint
 from utilities.state import ReconState
-from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output
+from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output, parse_whatweb_output
 import json
 
 load_dotenv()

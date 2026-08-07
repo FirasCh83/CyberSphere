@@ -325,3 +325,85 @@ def parse_whois_output(raw: str) -> Dict:
         result["key_findings"].append(f"Name servers: {', '.join(result['name_servers'])}")
 
     return result
+
+def parse_whatweb_output(raw: str) -> Dict:
+    result = {
+        "targets": [],
+        "technologies": [],
+        "key_findings": [],
+    }
+
+    for line in raw.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        target_url = data.get("target", "")
+        http_status = data.get("http_status", "")
+        plugins = data.get("plugins", {})
+
+        target_info = {
+            "url": target_url,
+            "status": http_status,
+            "technologies": []
+        }
+
+        for plugin_name, plugin_data in plugins.items():
+            #Extract version if present
+            version = None
+            if "version" in plugin_data:
+                versions = plugin_data["version"]
+                version = versions[0] if versions else None
+            
+            string = None
+            if "string" in plugin_data:
+                strings = plugin_data["string"]
+                string = strings[0] if strings else None
+            tech_entry = {
+                "name": plugin_name,
+                "version": version,
+                "string": string
+            }
+            target_info["technologies"].append(tech_entry)
+            result["technologies"].append(plugin_name)
+
+                        # flag interesting findings
+            name_lower = plugin_name.lower()
+
+            if name_lower == "wordpress" :
+                result["key_findings"].append(
+                    f"WordPress detected on {target_url}"
+                    + (f" version {version}" if version else "")
+                )
+            if name_lower in ["joomla", "drupal", "magento"]:
+                result["key_findings"].append(
+                    f"{plugin_name} CMS detected on {target_url}"
+                    + (f" version {version}" if version else "")
+                )
+            if name_lower == "php":
+                result["key_findings"].append(
+                    f"PHP {version or 'unknown version'} detected on {target_url}"
+                )
+            if name_lower == "apache":
+                result["key_findings"].append(
+                    f"Apache {version or ''} detected on {target_url}"
+                )
+            if name_lower == "x-powered-by":
+                result["key_findings"].append(
+                    f"X-Powered-By header exposed: {string} on {target_url}"
+                )
+            if name_lower == "email":
+                result["key_findings"].append(
+                    f"Email address exposed on {target_url}: {string}"
+                )
+
+        result["targets"].append(target_info)
+
+    # deduplicate technologies
+    result["technologies"] = list(set(result["technologies"]))
+
+    return result
