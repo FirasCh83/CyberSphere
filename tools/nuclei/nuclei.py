@@ -51,7 +51,7 @@ def run_default_login_scan(target: str) -> List[str]:
         "-u",
         target,
         "-tags",
-        "default-login"
+        "default-login",
         "-jsonl",
         "-silent",
     ])
@@ -61,7 +61,7 @@ def run_apache_scan(target: str) -> List[str]:
         "-u",
         target,
         "-tags",
-        "apache"
+        "apache",
         "-jsonl",
         "-silent",
     ])
