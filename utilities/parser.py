@@ -41,17 +41,19 @@ def parse_nmap_output(raw: str) -> Dict:
             result["open_ports"].append(port_info)
 
             # Extract NSE script output per port
-            for script_id, script_out in svc.scripts_results:
-                _extract_script_findings(
-                    script_id, script_out, svc.port, svc.service, result
-                )
-
-        # Host-level scripts (smb, nbstat etc)
-        for script_id, script_out in host.scripts_results:
-            _extract_script_findings(
-                script_id, script_out, None, None, result
+            _process_nmap_scripts(
+                svc.scripts_results,
+                svc.port,
+                svc.service,
+                result
             )
-
+        # Host-level scripts (smb, nbstat etc)
+    _process_nmap_scripts(
+        host.scripts_results,
+        None,
+        None,
+        result
+    )
     return result
 
 
@@ -126,6 +128,32 @@ def _guess_severity(script_id, output):
     if "7." in output or "8." in output:
         return "HIGH"
     return "MEDIUM"
+
+
+def _process_nmap_scripts(scripts, port, service, result):
+    for script in scripts:
+
+        if isinstance(script, tuple):
+            script_id = script[0]
+            script_out = script[1]
+
+        elif isinstance(script, dict):
+            script_id = script.get("id")
+            script_out = script.get("output", "")
+
+        else:
+            continue
+
+        if not script_id:
+            continue
+
+        _extract_script_findings(
+            script_id,
+            script_out,
+            port,
+            service,
+            result
+        )
 
 
 def _parse_nmap_regex(raw: str) -> Dict:
