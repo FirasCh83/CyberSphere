@@ -17,7 +17,7 @@ client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY")
 )
 
-
+#(TODO) make sure that the agent follows each web finding and pass it to the whatweb tool for fingerprinting, and then pass the results to the next tool in the chain.
 
 tools_nmap = [
     {
