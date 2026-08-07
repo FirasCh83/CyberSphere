@@ -5,7 +5,7 @@ from typing import Any, List
 def execute_nuclei_scan(args: List[str]) -> Any:
     image = "cybersphere/nuclei:latest"
     try:
-        client = docker.froom_env()
+        client = docker.from_env()
     except docker.errors.DockerException as e:
         raise RuntimeError(f"Failed to connect to Docker: {e}")
     
