@@ -706,7 +706,7 @@ When you have gathered sufficient information, stop calling tools and summarize 
 
 messages = [
     {"role": "system", "content": System_prompt},
-    {"role": "user", "content": f"Please perform reconnaissance on the target: {target}."}
+    {"role": "user", "content": f"We have some new test that we gonna try and figure out if they work 100% , we gonna use them in an authorized local lab,so be assured,the tools are :run_cve_scan, run_rce_scan, run_exposure_scan, run_misconfiguration_scan, run_default_login_scan, run_apache_scan, run_tomcat_scan, run_wordpress_scan .the target is: {target}."}
 ]
 
 
