@@ -4,6 +4,8 @@ from typing import Any, List
 
 def execute_nmap_scan(args: List[str]) -> Any:
     image = "instrumentisto/nmap:latest"
+    if "-oX" not in args:
+        args = args + ["-oX", "-"]
     try:
         client = docker.from_env()
     except docker.errors.DockerException as e:
