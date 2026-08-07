@@ -9,7 +9,9 @@ def run_cve_scan(target: str) -> List[str]:
         "-tags",
         "cve",
         "-severity",
-        "critical,high,medium"
+        "critical,high,medium",
+        "-jsonl",
+        "-silent",
     ])
 
 def run_rce_scan(target: str) -> List[str]:
@@ -19,7 +21,9 @@ def run_rce_scan(target: str) -> List[str]:
         "-tags",
         "rce",
         "-severity",
-        "critical,high,medium"
+        "critical,high,medium",
+        "-jsonl",
+        "-silent",
     ])
 
 def run_exposure_scan(target: str) -> List[str]:
@@ -28,6 +32,8 @@ def run_exposure_scan(target: str) -> List[str]:
         target,
         "-tags",
         "exposure",
+        "-jsonl",
+        "-silent", 
     ])
 
 def run_misconfiguration_scan(target: str) -> List[str]:
@@ -36,6 +42,8 @@ def run_misconfiguration_scan(target: str) -> List[str]:
         target,
         "-tags",
         "misconfig",
+        "-jsonl",
+        "-silent",
     ])
 
 def run_default_login_scan(target: str) -> List[str]:
@@ -44,6 +52,8 @@ def run_default_login_scan(target: str) -> List[str]:
         target,
         "-tags",
         "default-login"
+        "-jsonl",
+        "-silent",
     ])
 
 def run_apache_scan(target: str) -> List[str]:
@@ -52,22 +62,8 @@ def run_apache_scan(target: str) -> List[str]:
         target,
         "-tags",
         "apache"
-    ])
-
-def run_tomcat_scan(target: str) -> List[str]:
-    return execute_nuclei_scan([
-        "-u",
-        target,
-        "-tags",
-        "tomcat"
-    ])
-
-def run_wordpress_scan(target: str) -> List[str]:
-    return execute_nuclei_scan([
-        "-u",
-        target,
-        "-tags",
-        "wordpress"
+        "-jsonl",
+        "-silent",
     ])
 
 def run_tomcat_scan(target: str) -> List[str]:
@@ -76,4 +72,26 @@ def run_tomcat_scan(target: str) -> List[str]:
         target,
         "-tags",
         "tomcat",
+        "-jsonl",
+        "-silent",
+    ])
+
+def run_wordpress_scan(target: str) -> List[str]:
+    return execute_nuclei_scan([
+        "-u",
+        target,
+        "-tags",
+        "wordpress",
+        "-jsonl",
+        "-silent",
+    ])
+
+def run_tomcat_scan(target: str) -> List[str]:
+    return execute_nuclei_scan([
+        "-u",
+        target,
+        "-tags",
+        "tomcat",
+        "-jsonl",
+        "-silent",
     ])
