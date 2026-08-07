@@ -273,7 +273,127 @@ tools_whois = [
     },
 ]
 
-tools = tools_nmap + tools_whois
+tools_whatweb = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_basic_fingerprint",
+            "description": (
+                "Performs a basic WhatWeb technology fingerprint against a web target. "
+                "Fast, low-noise identification of web technologies, frameworks, "
+                "servers, CMS platforms, and other application components. "
+                "Use this as the default first step when a web service has been "
+                "identified during reconnaissance. "
+                "Generates relatively few HTTP requests and is suitable for "
+                "initial web technology discovery. "
+                "Returns structured JSON output from WhatWeb. "
+                "Requires a valid HTTP or HTTPS URL."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target web URL to fingerprint. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'https://example.com'. "
+                            "Use a URL with an HTTP or HTTPS scheme."
+                        )
+                    }
+                },
+                "required": [
+                    "target"
+                ],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_aggressive_fingerprint",
+            "description": (
+                "Performs an aggressive WhatWeb technology fingerprint against "
+                "a web target using aggression level 3. "
+                "Provides deeper technology detection than the basic fingerprint "
+                "and may identify additional plugins, frameworks, versions, "
+                "and application components that basic detection misses. "
+                "Use when basic fingerprinting produced useful web evidence but "
+                "additional technology identification is justified. "
+                "Generates more HTTP requests and network traffic than the basic "
+                "fingerprint. "
+                "Returns structured JSON output from WhatWeb. "
+                "Requires a valid HTTP or HTTPS URL."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target web URL to fingerprint. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'https://example.com'. "
+                            "Use a URL with an HTTP or HTTPS scheme."
+                        )
+                    }
+                },
+                "required": [
+                    "target"
+                ],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_full_fingerprint",
+            "description": (
+                "Performs maximum-aggression WhatWeb technology fingerprinting "
+                "against a web target using aggression level 4. "
+                "Attempts the most comprehensive technology identification and "
+                "can reveal deeper application, framework, CMS, server, and "
+                "version information. "
+                "Use only when deeper fingerprinting is warranted by previous "
+                "reconnaissance evidence or when lower aggression levels were "
+                "insufficient. "
+                "Generates significantly more HTTP requests and network traffic "
+                "and should not be the default reconnaissance action. "
+                "Returns structured JSON output from WhatWeb. "
+                "Requires a valid HTTP or HTTPS URL."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target web URL to fingerprint. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'https://example.com'. "
+                            "Use a URL with an HTTP or HTTPS scheme."
+                        )
+                    }
+                },
+                "required": [
+                    "target"
+                ],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+]
+
+
+
+tools = tools_nmap + tools_whois + tools_whatweb  # + tools_httpx
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -323,6 +443,12 @@ def call_tool(name, target):
         return run_full_port_scan(target)
     elif name == "run_whois_lookup":
         return run_whois_lookup(target)
+    elif name == "run_basic_fingerprint":
+        return run_basic_fingerprint(target)
+    elif name == "run_aggressive_fingerprint":
+        return run_aggressive_fingerprint(target)
+    elif name == "run_full_fingerprint":
+        return run_full_fingerprint(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
     
@@ -364,6 +490,7 @@ while True:
 
     httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
     whois_tools = {"run_whois_lookup"}
+    whatweb_tools = {"run_basic_fingerprint", "run_aggressive_fingerprint", "run_full_fingerprint"}
     if tool_name in httpx_tools:
         # httpx output — don't run nmap parser on it
         parsed = parse_httpx_output(result)
@@ -374,6 +501,10 @@ while True:
         state.findings.extend(parsed["key_findings"])
     elif tool_name in whois_tools:
         parsed = parse_whois_output(result)
+        state.findings.extend(parsed["key_findings"])
+    elif tool_name in whatweb_tools:
+        parsed = parse_whatweb_output(result)
+        state.technologies.extend(parsed["technologies"])
         state.findings.extend(parsed["key_findings"])
     else:
         # nmap output — safe to parse as nmap
