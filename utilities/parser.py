@@ -435,3 +435,108 @@ def parse_whatweb_output(raw: str) -> Dict:
     result["technologies"] = list(set(result["technologies"]))
 
     return result
+
+
+def parse_nuclei_output(raw: str) -> Dict:
+    """
+    Parse Nuclei JSONL output into structured findings.
+
+    Two layers:
+    - findings: canonical structured evidence (preserved for reporting)
+    - key_findings: agent-facing summary (minimal tokens, maximum signal)
+    """
+    result = {
+        "findings": [],
+        "key_findings": [],
+        "critical_count": 0,
+        "high_count": 0,
+        "medium_count": 0,
+        "low_count": 0,
+        "info_count": 0,
+    }
+
+    severity_order = {
+        "critical": 0,
+        "high": 1,
+        "medium": 2,
+        "low": 3,
+        "info": 4,
+    }
+
+    for line in raw.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        info = data.get("info", {})
+        severity = info.get("severity", "info").lower()
+        classification = info.get("classification", {})
+
+        finding = {
+            "template_id": data.get("template-id", ""),
+            "name": info.get("name", ""),
+            "severity": severity,
+            "description": info.get("description", ""),
+            "host": data.get("host", ""),
+            "ip": data.get("ip", ""),
+            "port": data.get("port", ""),
+            "scheme": data.get("scheme", ""),
+            "url": data.get("url", ""),
+            "matched_at": data.get("matched-at", ""),
+            "tags": info.get("tags", []) or [],
+            "cve": classification.get("cve-id"),
+            "cvss_score": classification.get("cvss-score"),
+            "cwe": classification.get("cwe-id"),
+            "references": info.get("reference", []) or [],
+            "extracted": data.get("extracted-results", []) or [],
+            "matcher_name": data.get("matcher-name", ""),
+        }
+        result["findings"].append(finding)
+
+        count_key = f"{severity}_count"
+        if count_key in result:
+            result[count_key] += 1
+
+    result["findings"].sort(
+        key=lambda x: severity_order.get(x["severity"], 99)
+    )
+
+    for finding in result["findings"]:
+        parts = [
+            f"[{finding['severity'].upper()}]",
+            finding["name"],
+            f"at {finding['matched_at']}",
+        ]
+
+        if finding["cve"]:
+            parts.append(f"({finding['cve']})")
+
+        if finding["cvss_score"] is not None:
+            parts.append(f"CVSS {finding['cvss_score']}")
+
+        if finding["extracted"]:
+            extracted = str(finding["extracted"][0])[:80]
+            parts.append(f"-> {extracted}")
+
+        result["key_findings"].append(" ".join(parts))
+
+    total = len(result["findings"])
+    if total > 0:
+        result["key_findings"].insert(0,
+            f"Nuclei: {total} findings — "
+            f"{result['critical_count']} critical, "
+            f"{result['high_count']} high, "
+            f"{result['medium_count']} medium, "
+            f"{result['low_count']} low, "
+            f"{result['info_count']} info"
+        )
+    else:
+        result["key_findings"].append(
+            "Nuclei: no findings for this scan profile"
+        )
+
+    return result
