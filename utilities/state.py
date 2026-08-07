@@ -48,6 +48,5 @@ NUCLEI DETAILS:
 {chr(10).join(self.nuclei_summary) or '  none yet'}
 KEY FINDINGS:
 {chr(10).join(self.findings) or '  none yet'}
-
 """
     

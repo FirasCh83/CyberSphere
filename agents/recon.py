@@ -7,8 +7,9 @@ from tools.nmap.nmap import run_service_detection, run_os_detection, run_default
 """ from tools.httpx.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis """
 from tools.whois.whois import run_whois_lookup
 from tools.whatweb.whatweb import run_basic_fingerprint, run_aggressive_fingerprint, run_full_fingerprint
+from tools.nuclei.nuclei import run_cve_scan, run_rce_scan, run_exposure_scan, run_misconfiguration_scan, run_default_login_scan, run_apache_scan, run_tomcat_scan, run_wordpress_scan, run_tomcat_scan 
 from utilities.state import ReconState
-from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output, parse_whatweb_output
+from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output, parse_whatweb_output, parse_nuclei_output
 import json
 
 load_dotenv()
@@ -398,8 +399,284 @@ tools_whatweb = [
 ]
 
 
+tools_nuclei = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_cve_scan",
+            "description": (
+                "Runs a Nuclei vulnerability scan focused on known CVE-based "
+                "vulnerabilities against a web target. "
+                "Uses CVE-tagged templates and limits results to critical, "
+                "high, and medium severity findings. "
+                "Use when reconnaissance has identified a reachable web "
+                "service and you want to check for known vulnerabilities. "
+                "This is a targeted vulnerability scan rather than a general "
+                "technology discovery scan. "
+                "Requires a complete HTTP or HTTPS URL including the correct "
+                "port when the service is running on a non-standard port. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete web service URL to scan. "
+                            "Include the HTTP or HTTPS scheme and explicit port "
+                            "when applicable. "
+                            "Examples: "
+                            "'http://192.168.56.107', "
+                            "'http://192.168.56.107:8180', "
+                            "'https://example.com:8443'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
 
-tools = tools_nmap + tools_whois + tools_whatweb  # + tools_httpx
+    {
+        "type": "function",
+        "function": {
+            "name": "run_rce_scan",
+            "description": (
+                "Runs a targeted Nuclei scan for Remote Code Execution (RCE) "
+                "vulnerabilities using RCE-tagged templates. "
+                "Results are limited to critical, high, and medium severity. "
+                "Use when reconnaissance provides evidence that a web service "
+                "or application may expose an RCE-related attack surface. "
+                "This scan can generate more intrusive requests than basic "
+                "technology fingerprinting. "
+                "Requires a complete HTTP or HTTPS URL, including the correct "
+                "port for non-standard web services. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete web service URL. "
+                            "Examples: "
+                            "'http://192.168.56.107', "
+                            "'http://192.168.56.107:8180', "
+                            "'https://example.com:8443'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_exposure_scan",
+            "description": (
+                "Runs a Nuclei scan for exposed files, services, credentials, "
+                "sensitive information, and other security exposures using "
+                "exposure-tagged templates. "
+                "Use when reconnaissance indicates a web service that may "
+                "expose sensitive resources or configuration. "
+                "Requires a complete HTTP or HTTPS URL, including the correct "
+                "port for non-standard services. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete web service URL including scheme and, "
+                            "when necessary, port. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'http://192.168.56.107:8080'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_misconfiguration_scan",
+            "description": (
+                "Runs a Nuclei scan for web server and application "
+                "misconfigurations using misconfiguration-tagged templates. "
+                "Use to identify insecure configurations, exposed settings, "
+                "and common deployment mistakes after a web service has been "
+                "identified. "
+                "Requires a complete HTTP or HTTPS URL and the correct port "
+                "for non-standard web services. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete HTTP or HTTPS service URL. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'https://192.168.56.107:8443'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_default_login_scan",
+            "description": (
+                "Runs Nuclei templates targeting known default credentials "
+                "and default login configurations. "
+                "Use when reconnaissance identifies a web application, "
+                "administrative interface, appliance, framework, or service "
+                "that may use vendor-default credentials. "
+                "Requires a complete HTTP or HTTPS URL and the correct port. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete web service URL including scheme and "
+                            "explicit non-standard port when applicable."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_apache_scan",
+            "description": (
+                "Runs Nuclei templates specifically associated with Apache "
+                "web servers. "
+                "Use when reconnaissance or WhatWeb identifies Apache as "
+                "the underlying web server. "
+                "This provides technology-specific vulnerability and "
+                "misconfiguration checks rather than generic web scanning. "
+                "Requires a complete HTTP or HTTPS URL and the correct port. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete Apache web service URL. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'http://192.168.56.107:8080'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_tomcat_scan",
+            "description": (
+                "Runs Nuclei templates specifically associated with Apache "
+                "Tomcat web applications and servers. "
+                "Use when service detection or WhatWeb identifies Tomcat "
+                "or the Coyote HTTP connector. "
+                "Requires a complete HTTP or HTTPS URL for the discovered "
+                "Tomcat service, including its non-standard port when present. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete Tomcat service URL. "
+                            "Examples: 'http://192.168.56.107:8180' or "
+                            "'https://example.com:8443'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_wordpress_scan",
+            "description": (
+                "Runs Nuclei templates specifically associated with "
+                "WordPress installations. "
+                "Use when WhatWeb, HTTP responses, page content, or previous "
+                "reconnaissance indicates that the target is running WordPress. "
+                "This is a technology-specific scan and should not be used "
+                "against services without WordPress evidence unless broader "
+                "testing is explicitly required. "
+                "Requires a complete HTTP or HTTPS URL and the correct port. "
+                "Returns structured Nuclei JSONL findings."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Complete WordPress service URL. "
+                            "Examples: 'http://192.168.56.107' or "
+                            "'http://192.168.56.107:8080'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+]
+
+
+tools = tools_nmap + tools_whois + tools_whatweb + tools_nuclei  # + tools_httpx
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -455,6 +732,22 @@ def call_tool(name, target):
         return run_aggressive_fingerprint(target)
     elif name == "run_full_fingerprint":
         return run_full_fingerprint(target)
+    elif name == "run_cve_scan":
+        return run_cve_scan(target)
+    elif name == "run_rce_scan":
+        return run_rce_scan(target)
+    elif name == "run_exposure_scan":
+        return run_exposure_scan(target)
+    elif name == "run_misconfiguration_scan":
+        return run_misconfiguration_scan(target)
+    elif name == "run_default_login_scan":
+        return run_default_login_scan(target)
+    elif name == "run_apache_scan":
+        return run_apache_scan(target)
+    elif name == "run_tomcat_scan":
+        return run_tomcat_scan(target)
+    elif "run_wordpress_scan":
+        return run_wordpress_scan(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
     
@@ -497,6 +790,11 @@ while True:
     httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
     whois_tools = {"run_whois_lookup"}
     whatweb_tools = {"run_basic_fingerprint", "run_aggressive_fingerprint", "run_full_fingerprint"}
+    nuclei_tools = {
+    "run_cve_scan", "run_rce_scan", "run_exposure_scan",
+    "run_misconfiguration_scan", "run_default_login_scan",
+    "run_apache_scan", "run_tomcat_scan", "run_wordpress_scan",
+}
     if tool_name in httpx_tools:
         # httpx output — don't run nmap parser on it
         parsed = parse_httpx_output(result)
@@ -511,6 +809,18 @@ while True:
     elif tool_name in whatweb_tools:
         parsed = parse_whatweb_output(result)
         state.technologies.extend(parsed["technologies"])
+        state.findings.extend(parsed["key_findings"])
+    elif tool_name in nuclei_tools:
+        parsed = parse_nuclei_output(result)
+        # evidence layer — full structured findings preserved
+        state.nuclei_findings.extend(parsed["findings"])
+        # agent layer — compact summaries only
+        state.nuclei_summary.extend(parsed["key_findings"])
+        # severity counts — accumulate across multiple nuclei scans
+        state.nuclei_critical_count += parsed["critical_count"]
+        state.nuclei_high_count += parsed["high_count"]
+        state.nuclei_medium_count += parsed["medium_count"]
+        # also push into general findings so agent sees them in state summary
         state.findings.extend(parsed["key_findings"])
     else:
         # nmap output — safe to parse as nmap
