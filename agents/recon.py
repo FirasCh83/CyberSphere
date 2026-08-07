@@ -288,6 +288,8 @@ tools_whatweb = [
                 "initial web technology discovery. "
                 "Returns structured JSON output from WhatWeb. "
                 "Requires a valid HTTP or HTTPS URL."
+                "IMPORTANT, always after finding a http or https service or a web service running on a port, always include that option on the target"
+                "Example: http://192.168.56.107, http://192.168.56.107:8080, http://192.168.56.107:8180, https://192.168.56.107, https://example.com:8443"
             ),
             "parameters": {
                 "type": "object",
@@ -327,6 +329,8 @@ tools_whatweb = [
                 "fingerprint. "
                 "Returns structured JSON output from WhatWeb. "
                 "Requires a valid HTTP or HTTPS URL."
+                "IMPORTANT, always after finding a http or https service or a web service running on a port, always include that option on the target"
+                "Example: http://192.168.56.107, http://192.168.56.107:8080, http://192.168.56.107:8180, https://192.168.56.107, https://example.com:8443"
             ),
             "parameters": {
                 "type": "object",
@@ -367,6 +371,8 @@ tools_whatweb = [
                 "and should not be the default reconnaissance action. "
                 "Returns structured JSON output from WhatWeb. "
                 "Requires a valid HTTP or HTTPS URL."
+                "IMPORTANT, always after finding a http or https service or a web service running on a port, always include that option on the target"
+                "Example: http://192.168.56.107, http://192.168.56.107:8080, http://192.168.56.107:8180, https://192.168.56.107, https://example.com:8443"
             ),
             "parameters": {
                 "type": "object",
