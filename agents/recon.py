@@ -3,11 +3,11 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from tools.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
-""" from tools.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis """
+from tools.nmap.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
+""" from tools.httpx.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis """
+from tools.whois.whois import run_whois_lookup
 from utilities.state import ReconState
-from utilities.parser import parse_nmap_output
-from utilities.parser import parse_httpx_output
+from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output
 import json
 
 load_dotenv()
@@ -233,7 +233,46 @@ tools_nmap = [
     },
 ] """
 
-tools = tools_nmap 
+tools_whois = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_whois_lookup",
+            "description": (
+                "Performs a WHOIS lookup against a domain or public IP address. "
+                "Collects passive registration intelligence including registrar, "
+                "organization, registration date, expiration date, name servers, "
+                "domain status, country, and abuse/contact information when available. "
+                "Use this early during reconnaissance for internet-facing domains "
+                "to understand ownership and infrastructure context. "
+                "Does not scan the target and generates no network noise. "
+                "Very fast (~2-5s). "
+                "Do not use against private IP addresses (e.g. 192.168.x.x, "
+                "10.x.x.x, 172.16-31.x.x) because WHOIS data will not be useful."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target domain or public IP address. "
+                            "Examples: 'example.com' or '8.8.8.8'. "
+                            "Avoid private IP addresses."
+                        )
+                    }
+                },
+                "required": [
+                    "target"
+                ],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+]
+
+tools = tools_nmap + tools_whois
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -281,6 +320,8 @@ def call_tool(name, target):
         return run_vulnerability_scan(target)
     elif name == "run_full_port_scan":
         return run_full_port_scan(target)
+    elif name == "run_whois_lookup":
+        return run_whois_lookup(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
     
@@ -321,7 +362,7 @@ while True:
     result = call_tool(tool_name, target)
 
     httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
-
+    whois_tools = {"run_whois_lookup"}
     if tool_name in httpx_tools:
         # httpx output — don't run nmap parser on it
         parsed = parse_httpx_output(result)
@@ -329,6 +370,9 @@ while True:
         state.technologies.extend(parsed["technologies"])
         state.tls_issues.extend(parsed["tls_issues"])
         state.missing_headers.extend(parsed["missing_headers"])
+        state.findings.extend(parsed["key_findings"])
+    elif tool_name in whois_tools:
+        parsed = parse_whois_output(result)
         state.findings.extend(parsed["key_findings"])
     else:
         # nmap output — safe to parse as nmap
