@@ -289,9 +289,6 @@ tools_whatweb = [
                 "Generates relatively few HTTP requests and is suitable for "
                 "initial web technology discovery. "
                 "Returns structured JSON output from WhatWeb. "
-                "Requires a valid HTTP or HTTPS URL."
-                "IMPORTANT, always after finding a http or https service or a web service running on a port, always include that option on the target"
-                "Example: http://192.168.56.107, http://192.168.56.107:8080, http://192.168.56.107:8180, https://192.168.56.107, https://example.com:8443"
             ),
             "parameters": {
                 "type": "object",
@@ -300,9 +297,6 @@ tools_whatweb = [
                         "type": "string",
                         "description": (
                             "Target web URL to fingerprint. "
-                            "Examples: 'http://192.168.56.107' or "
-                            "'https://example.com'. "
-                            "Use a URL with an HTTP or HTTPS scheme."
                         )
                     }
                 },
@@ -330,9 +324,6 @@ tools_whatweb = [
                 "Generates more HTTP requests and network traffic than the basic "
                 "fingerprint. "
                 "Returns structured JSON output from WhatWeb. "
-                "Requires a valid HTTP or HTTPS URL."
-                "IMPORTANT, always after finding a http or https service or a web service running on a port, always include that option on the target"
-                "Example: http://192.168.56.107, http://192.168.56.107:8080, http://192.168.56.107:8180, https://192.168.56.107, https://example.com:8443"
             ),
             "parameters": {
                 "type": "object",
@@ -341,9 +332,6 @@ tools_whatweb = [
                         "type": "string",
                         "description": (
                             "Target web URL to fingerprint. "
-                            "Examples: 'http://192.168.56.107' or "
-                            "'https://example.com'. "
-                            "Use a URL with an HTTP or HTTPS scheme."
                         )
                     }
                 },
@@ -372,9 +360,6 @@ tools_whatweb = [
                 "Generates significantly more HTTP requests and network traffic "
                 "and should not be the default reconnaissance action. "
                 "Returns structured JSON output from WhatWeb. "
-                "Requires a valid HTTP or HTTPS URL."
-                "IMPORTANT, always after finding a http or https service or a web service running on a port, always include that option on the target"
-                "Example: http://192.168.56.107, http://192.168.56.107:8080, http://192.168.56.107:8180, https://192.168.56.107, https://example.com:8443"
             ),
             "parameters": {
                 "type": "object",
@@ -383,9 +368,6 @@ tools_whatweb = [
                         "type": "string",
                         "description": (
                             "Target web URL to fingerprint. "
-                            "Examples: 'http://192.168.56.107' or "
-                            "'https://example.com'. "
-                            "Use a URL with an HTTP or HTTPS scheme."
                         )
                     }
                 },
@@ -695,9 +677,7 @@ tools_katana = [
                     "target": {
                         "type": "string",
                         "description": (
-                            "Target HTTP/HTTPS URL to crawl, e.g. "
-                            "'http://192.168.56.107' or "
-                            "'https://example.com'."
+                            "Target HTTP/HTTPS URL to crawl"
                         )
                     }
                 },
@@ -727,8 +707,7 @@ tools_katana = [
                     "target": {
                         "type": "string",
                         "description": (
-                            "Target HTTP/HTTPS URL to crawl deeply, e.g. "
-                            "'http://192.168.56.107'."
+                            "Target HTTP/HTTPS URL to crawl deeply"
                         )
                     }
                 },
@@ -864,12 +843,38 @@ When you have gathered sufficient information, stop calling tools and summarize 
 
 messages = [
     {"role": "system", "content": System_prompt},
-    {"role": "user", "content": f"Lets try the new katana tools on this local authorized virtual machine, the tools are :run_basic_crawl,run_deep_crawl,run_js_crawl,run_form_discovery,run_passive_crawl . The target is :{target}, Follow the tools description and how to pass the right target format http or https with the right port if needed, and the target is :{target}"},
+    {"role": "user", "content": f"Given the presented set of tools, Perform a reconnaissance operation on this local authorised virtual machine:{target}, follow the tools descriptions and the rules provided in the system prompt. Only call one tool at a time, wait for the result, analyze it, and then decide on the next step. Stop when you have enough information for a useful pentest report."},
 ]
 
+def build_web_targets(state: ReconState) -> str:
+    """
+    Build comma-separated URL list from ports already discovered by nmap.
+    Falls back to common ports if nmap hasn't run yet.
+    """
+    http_services = {
+        "http", "https", "http-alt", "http-proxy",
+        "tomcat", "ajp13", "webcache", "8180"
+    }
+    
+    urls = []
+    for port_info in state.open_ports:
+        port = port_info["port"]
+        service = port_info.get("service", "")
+        
+        if service in http_services or port in [80, 443, 8080, 8180, 8443, 8000, 8888]:
+            scheme = "https" if port in [443, 8443] else "http"
+            urls.append(f"{scheme}://{state.target}:{port}")
+    
+    return ",".join(urls) if urls else state.target
 
 
-def call_tool(name, target):
+
+def call_tool(name, args):
+    target = args.get("target")
+
+    web_tools = katana_tools | whatweb_tools
+    if name in web_tools:
+        target = build_web_targets(state)
     if name == "run_service_detection":
         return run_service_detection(target)
     elif name == "run_os_detection":
@@ -951,9 +956,10 @@ while True:
         break
     tool_call= response_message.tool_calls[0]
     tool_name = tool_call.function.name
-
+    tool_args = json.loads(tool_call.function.arguments) 
     print(f"Running : {tool_name}")
-    result = call_tool(tool_name, target)
+    result = call_tool(tool_name, tool_args)
+    
 
     httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
     whois_tools = {"run_whois_lookup"}
