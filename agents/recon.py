@@ -676,8 +676,165 @@ tools_nuclei = [
     },
 ]
 
+tools_katana = [
+    {
+        "type": "function",
+        "function": {
+            "name": "run_basic_crawl",
+            "description": (
+                "Runs a standard Katana web crawl against the target using "
+                "'katana -u TARGET -jsonl -silent'. Discovers URLs, links, "
+                "paths, and other endpoints exposed through the application's "
+                "crawlable content. Use this as the default web discovery "
+                "capability after an HTTP/HTTPS service has been identified. "
+                "Fast-to-medium scan depending on application size."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target HTTP/HTTPS URL to crawl, e.g. "
+                            "'http://192.168.56.107' or "
+                            "'https://example.com'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
 
-tools = tools_nmap + tools_whois + tools_whatweb + tools_nuclei  # + tools_httpx
+    {
+        "type": "function",
+        "function": {
+            "name": "run_deep_crawl",
+            "description": (
+                "Runs a deeper Katana crawl using "
+                "'katana -u TARGET -jsonl -d 5 -silent'. "
+                "Traverses the application up to depth 5 to discover "
+                "nested pages and endpoints that a shallow crawl may miss. "
+                "Use this when a basic crawl reveals a large or deeply "
+                "structured web application, documentation portal, CMS, "
+                "or many nested paths. More expensive than the basic crawl."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target HTTP/HTTPS URL to crawl deeply, e.g. "
+                            "'http://192.168.56.107'."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_js_crawl",
+            "description": (
+                "Runs Katana with JavaScript crawling enabled using "
+                "'katana -u TARGET -jsonl -jc -silent'. "
+                "Analyzes JavaScript resources discovered during crawling "
+                "to identify additional URLs and endpoints that may not "
+                "appear in normal HTML links. Use this when the target "
+                "uses JavaScript heavily, exposes many .js files, or when "
+                "client-side endpoints need to be discovered."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target HTTP/HTTPS URL whose JavaScript "
+                            "resources should be analyzed."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_form_discovery",
+            "description": (
+                "Runs Katana's form discovery capability using "
+                "'katana -u TARGET -jsonl -form -silent'. "
+                "Identifies forms and input-related endpoints exposed "
+                "by the application. Use this when the target contains "
+                "login pages, search functionality, upload functionality, "
+                "or other user-input surfaces that may require further "
+                "security testing."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target HTTP/HTTPS URL to inspect for forms "
+                            "and input surfaces."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "run_passive_crawl",
+            "description": (
+                "Runs Katana in passive mode using "
+                "'katana -u TARGET -jsonl -passive -silent'. "
+                "Performs passive URL discovery using available "
+                "non-active sources rather than actively crawling the "
+                "application. Use this when additional endpoint discovery "
+                "is desired with reduced interaction, or when passive "
+                "discovery can complement an active crawl."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": (
+                            "Target HTTP/HTTPS URL for passive "
+                            "endpoint discovery."
+                        )
+                    }
+                },
+                "required": ["target"],
+                "additionalProperties": False
+            },
+            "strict": True,
+        },
+    },
+]
+
+
+tools = tools_nmap + tools_whois + tools_whatweb + tools_nuclei + tools_katana  # + tools_httpx
 
 target = input("Enter the target IP address or hostname: ")
 
@@ -749,6 +906,16 @@ def call_tool(name, target):
         return run_tomcat_scan(target)
     elif "run_wordpress_scan":
         return run_wordpress_scan(target)
+    elif name == "run_basic_crawl":
+        return run_basic_crawl(target)
+    elif name == "run_deep_crawl":
+        return run_deep_crawl(target)
+    elif name == "run_js_crawl":
+        return run_js_crawl(target)
+    elif name == "run_form_discovery":
+        return run_form_discovery(target)
+    elif name == "run_passive_crawl":
+        return run_passive_crawl(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
     
@@ -796,6 +963,10 @@ while True:
     "run_misconfiguration_scan", "run_default_login_scan",
     "run_apache_scan", "run_tomcat_scan", "run_wordpress_scan",
 }
+    katana_tools = {
+    "run_basic_crawl", "run_deep_crawl", "run_js_crawl",
+    "run_form_discovery", "run_passive_crawl",
+}
     if tool_name in httpx_tools:
         # httpx output — don't run nmap parser on it
         parsed = parse_httpx_output(result)
@@ -804,13 +975,16 @@ while True:
         state.tls_issues.extend(parsed["tls_issues"])
         state.missing_headers.extend(parsed["missing_headers"])
         state.findings.extend(parsed["key_findings"])
+
     elif tool_name in whois_tools:
         parsed = parse_whois_output(result)
         state.findings.extend(parsed["key_findings"])
+
     elif tool_name in whatweb_tools:
         parsed = parse_whatweb_output(result)
         state.technologies.extend(parsed["technologies"])
         state.findings.extend(parsed["key_findings"])
+
     elif tool_name in nuclei_tools:
         parsed = parse_nuclei_output(result)
         # evidence layer — full structured findings preserved
@@ -823,6 +997,16 @@ while True:
         state.nuclei_medium_count += parsed["medium_count"]
         # also push into general findings so agent sees them in state summary
         state.findings.extend(parsed["key_findings"])
+    
+    elif tool_name in katana_tools:
+        parsed = parse_katana_output(result)
+        state.katana_endpoints.extend(parsed["endpoints"])
+        state.katana_forms.extend(parsed["forms"])
+        state.katana_interesting.extend(parsed["interesting_endpoints"])
+        state.katana_emails.extend(parsed["emails"])
+        state.katana_stats = parsed["crawl_stats"]
+        state.findings.extend(parsed["key_findings"])
+
     else:
         # nmap output — safe to parse as nmap
         parsed = parse_nmap_output(result)
