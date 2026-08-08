@@ -43,4 +43,6 @@ def run_full_fingerprint(target: str) -> List[str]:
             "4",
             "--quiet",
             ] + urls)
+
+            #todo: add more functions for different levels of fingerprinting if needed
         
