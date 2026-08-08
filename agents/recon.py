@@ -8,6 +8,7 @@ from tools.nmap.nmap import run_service_detection, run_os_detection, run_default
 from tools.whois.whois import run_whois_lookup
 from tools.whatweb.whatweb import run_basic_fingerprint, run_aggressive_fingerprint, run_full_fingerprint
 from tools.nuclei.nuclei import run_cve_scan, run_rce_scan, run_exposure_scan, run_misconfiguration_scan, run_default_login_scan, run_apache_scan, run_tomcat_scan, run_wordpress_scan, run_tomcat_scan 
+from tools.katana.katana import run_basic_crawl, run_deep_crawl, run_js_crawl, run_form_discovery,run_passive_crawl 
 from utilities.state import ReconState
 from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output, parse_whatweb_output, parse_nuclei_output
 import json
