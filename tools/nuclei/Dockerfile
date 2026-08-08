@@ -1,6 +1,6 @@
 FROM alpine:3.20
 
-ARG NUCLEI_VERSION=3.4.10
+ARG NUCLEI_VERSION=3.11.1
 
 RUN apk add --no-cache \
     ca-certificates \
@@ -13,8 +13,6 @@ RUN wget -q \
     && unzip /tmp/nuclei.zip -d /usr/local/bin \
     && rm -f /tmp/nuclei.zip \
     && chmod +x /usr/local/bin/nuclei
-
-RUN nuclei -version
 
 RUN nuclei -update-templates
 
