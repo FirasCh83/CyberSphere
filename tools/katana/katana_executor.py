@@ -15,7 +15,7 @@ def execute_katana_scan(args: List[str]) -> Any:
             command= args,
             remove= True,
             stdout= True,
-            stderr=False,
+            stderr=True,
             network_mode= "bridge",
             dns= ["8.8.8.8", "1.1.1.1"],
             detach= False,

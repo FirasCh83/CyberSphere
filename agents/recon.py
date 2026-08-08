@@ -904,7 +904,7 @@ def call_tool(name, target):
         return run_apache_scan(target)
     elif name == "run_tomcat_scan":
         return run_tomcat_scan(target)
-    elif "run_wordpress_scan":
+    elif name == "run_wordpress_scan":
         return run_wordpress_scan(target)
     elif name == "run_basic_crawl":
         return run_basic_crawl(target)
