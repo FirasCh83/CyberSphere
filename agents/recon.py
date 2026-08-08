@@ -846,6 +846,19 @@ messages = [
     {"role": "user", "content": f"Given the presented set of tools, Perform a reconnaissance operation on this local authorised virtual machine:{target}, follow the tools descriptions and the rules provided in the system prompt. Only call one tool at a time, wait for the result, analyze it, and then decide on the next step. Stop when you have enough information for a useful pentest report."},
 ]
 
+httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
+whois_tools = {"run_whois_lookup"}
+whatweb_tools = {"run_basic_fingerprint", "run_aggressive_fingerprint", "run_full_fingerprint"}
+nuclei_tools = {
+    "run_cve_scan", "run_rce_scan", "run_exposure_scan",
+    "run_misconfiguration_scan", "run_default_login_scan",
+    "run_apache_scan", "run_tomcat_scan", "run_wordpress_scan",
+}
+katana_tools = {
+    "run_basic_crawl", "run_deep_crawl", "run_js_crawl",
+    "run_form_discovery", "run_passive_crawl",
+}
+
 def build_web_targets(state: ReconState) -> str:
     """
     Build comma-separated URL list from ports already discovered by nmap.
@@ -961,18 +974,7 @@ while True:
     result = call_tool(tool_name, tool_args)
     
 
-    httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
-    whois_tools = {"run_whois_lookup"}
-    whatweb_tools = {"run_basic_fingerprint", "run_aggressive_fingerprint", "run_full_fingerprint"}
-    nuclei_tools = {
-    "run_cve_scan", "run_rce_scan", "run_exposure_scan",
-    "run_misconfiguration_scan", "run_default_login_scan",
-    "run_apache_scan", "run_tomcat_scan", "run_wordpress_scan",
-}
-    katana_tools = {
-    "run_basic_crawl", "run_deep_crawl", "run_js_crawl",
-    "run_form_discovery", "run_passive_crawl",
-}
+
     if tool_name in httpx_tools:
         # httpx output — don't run nmap parser on it
         parsed = parse_httpx_output(result)
