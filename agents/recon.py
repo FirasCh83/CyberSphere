@@ -864,7 +864,7 @@ When you have gathered sufficient information, stop calling tools and summarize 
 
 messages = [
     {"role": "system", "content": System_prompt},
-    {"role": "user", "content": f"Lets try the new katana tools on this local authorized virtual machine, the tools are :run_basic_crawl,run_deep_crawl,run_js_crawl,run_form_discovery,run_passive_crawl . The target is :{target}."}
+    {"role": "user", "content": f"Lets try the new katana tools on this local authorized virtual machine, the tools are :run_basic_crawl,run_deep_crawl,run_js_crawl,run_form_discovery,run_passive_crawl . The target is :{target}, Follow the tools description and how to pass the right target format http or https with the right port if needed, and the target is :{target}"},
 ]
 
 
