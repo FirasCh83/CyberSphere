@@ -40,12 +40,31 @@ class VulnKnowledgeBase:
         Semantic search for vulnerabilities matching a service.
         Returns ranked candidates with metadata.
         """
+
+        # Enrich query with known service aliases
+        service_aliases = {
+                    "netbios-ssn": "samba smb windows file sharing",
+        "netbios-ns": "samba smb netbios",
+        "ajp13": "tomcat apache jserv",
+        "java-rmi": "java rmi registry",
+        "bindshell": "backdoor shell root",
+        "domain": "dns bind nameserver",
+        }
+
+        enriched_service = service_aliases.get(service.lower(), service)
+        
+
+
         # build search query from service context
-        query_text = f"{service} {version} vulnerability exploit".strip()
+        query_text = f"{enriched_service} {version} vulnerability exploit".strip()
+
+        total = self.collection.count()
+        if total == 0:
+            return []
         
         results = self.collection.query(
             query_texts=[query_text],
-            n_results=min(n_results, self.collection.count() or 1),
+            n_results=total,
             include=["documents", "metadatas", "distances"]
         )
 
@@ -65,7 +84,8 @@ class VulnKnowledgeBase:
         Returns candidates scored by both semantic similarity + evidence match.
         """
         all_candidates = []
-        seen_cves = set()
+        # Key by cve and port combination instead of cve only to avoid duplicates when the same CVE is matched on multiple ports
+        seen = set()
 
         for port_info in recon_state.open_ports:
             port = port_info["port"]
@@ -80,11 +100,14 @@ class VulnKnowledgeBase:
 
             for candidate in candidates:
                 cve_id = candidate["metadata"].get("cve_id", "")
+
+                # Create a unique key for the combination of CVE and port
+                key = f"{cve_id}:{port}"
                 
                 # skip duplicates
-                if cve_id in seen_cves:
+                if key in seen:
                     continue
-                seen_cves.add(cve_id)
+                seen.add(key)
 
                 # score evidence match deterministically
                 evidence_score = self._score_evidence(

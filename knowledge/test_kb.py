@@ -22,7 +22,7 @@ test_state.open_ports = [
 ]
 #test matching
 print("\n HIGH CONFIDENCE CANDIDATES")
-candidates = kb.get_high_confidence_candidates(test_state, min_score=0.6)
+candidates = kb.get_high_confidence_candidates(test_state)
 for c in candidates:
     print(f"\nCVE: {c['metadata']['cve_id']}")
     print(f"  Port: {c['matched_port']} / {c['matched_service']}")
