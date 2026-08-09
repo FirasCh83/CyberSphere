@@ -8,6 +8,7 @@ class ReconState:
     open_ports: List[dict] = field(default_factory=list)
     services: Dict[int, str] = field(default_factory=dict)
     findings: List[str] = field(default_factory=list)
+    os_guess: str = ""
 
     #Httpx addition
     web_services: List[str] = field(default_factory=list)
