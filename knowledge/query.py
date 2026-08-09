@@ -127,7 +127,7 @@ class VulnKnowledgeBase:
         matched = 0
         for evidence in needed:
             try:
-                key, value = evidence.split(":", 1)
+                key, value = evidence.split(":", 10)
             except ValueError:
                 continue
 
