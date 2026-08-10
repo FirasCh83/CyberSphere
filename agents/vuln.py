@@ -123,9 +123,9 @@ RECON STATE:
 {recon_state.summary()}
 """
     response = client.chat.completions.create(
-        model="laguna-s-2.1:free",
+        model="openrouter/free",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=300,
+        tools=tools
     )
     return response.choices[0].message.content or ""
 
@@ -292,7 +292,7 @@ After each tool result reason:
         )
 
         completion = client.chat.completions.create(
-            model="poolside/laguna-xs-2.1:free",
+            model="openrouter/free",
             messages=context,
             tools=tools,
         )

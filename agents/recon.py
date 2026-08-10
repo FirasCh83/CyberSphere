@@ -955,7 +955,7 @@ def run_recon_agent(target: str) -> ReconState:
         )
 
         completion = client.chat.completions.create(
-        model= "laguna-s-2.1:free",
+        model= "openrouter/free",
         messages= context,
         tools=tools,
         )
