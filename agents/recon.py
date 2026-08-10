@@ -878,12 +878,12 @@ def build_web_targets(state: ReconState) -> str:
 
 
 
-def call_tool(name, args):
+def call_tool(name, args, state: ReconState):
     target = args.get("target")
 
     web_tools = katana_tools | whatweb_tools
     if name in web_tools:
-        target = build_web_targets(target)
+        target = build_web_targets(state)
     if name == "run_service_detection":
         return run_service_detection(target)
     elif name == "run_os_detection":
@@ -978,7 +978,7 @@ def run_recon_agent(target: str) -> ReconState:
         tool_name = tool_call.function.name
         tool_args = json.loads(tool_call.function.arguments) 
         print(f"Running : {tool_name}")
-        result = call_tool(tool_name, tool_args)
+        result = call_tool(tool_name, tool_args, state)
     
 
 
