@@ -156,6 +156,10 @@ class VulnState:
         all_vulns = self.confirmed + self.probable + self.unconfirmed
         return sorted(all_vulns, key=lambda x: x.priority_score(), reverse=True)
     
+    def exploitable (self) -> List[ConfirmedVulnerability]:
+        """All findings ready for exploitation agent."""
+        return [v for v in self.all_findings() if v.is_exploitable()]
+    
     def summary(self) -> str:
         """Compact summary injected into the agent context each cycle"""
         confirmed_line = "\n".join(
