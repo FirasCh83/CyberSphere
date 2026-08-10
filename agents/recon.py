@@ -1041,8 +1041,18 @@ def run_recon_agent(target: str) -> ReconState:
             "content": f"PARSED RESULTS:\n{parsed}\n\nSTATE:\n{state.summary()}"}
         )
 
-        if not response_message.content:
-            print("No reasoning provided. Stopping.")
+        reasoning = (
+            getattr(response_message, "reasoning", None)
+            or response_message.content
+            or None
+        )
+
+        if reasoning:
+            print(f"Agent's reasoning: {reasoning}")
+        
+        if not response_message.tool_calls:
+            print("Agent finished")
+            print(response_message.content)
             break
     return state
     
