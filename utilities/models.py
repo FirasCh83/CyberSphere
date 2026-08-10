@@ -130,5 +130,69 @@ class ConfirmedVulnerability:
             "priority_score": self.priority_score(),
             "is_exploitable": self.is_exploitable(),
         }
+    
 
+@dataclass
+class VulnState:
+    # input from the recon agent
+    target: str
+    recon_summary: str = ""
+
+    # layer 1 : RAG scoring and semantic matching
+    rag_candidates: List[dict] = field(default_factory=list)
+    rag_high_confidence: List[dict] = field(default_factory=list)
+
+    # layer 2 : active validation and confirmation of vulnerabilities
+    confirmed: List[ConfirmedVulnerability] = field(default_factory=list)
+    probable: List[ConfirmedVulnerability] = field(default_factory=list)
+    unconfirmed: List[ConfirmedVulnerability] = field(default_factory=list)
+
+    # tracking
+    validations_run: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+
+    def all_findings(self) -> List[ConfirmedVulnerability]:
+        """All findings sorted by priority - for exploiatation agent"""
+        all_vulns = self.confirmed + self.probable + self.unconfirmed
+        return sorted(all_vulns, key=lambda x: x.priority_score(), reverse=True)
+    
+    def summary(self) -> str:
+        """Compact summary injected into the agent context each cycle"""
+        confirmed_line = "\n".join(
+            f"  {v.to_agent_summary()}" for v in self.confirmed
+        ) or "  none yet"
+
+        probable_line = "\n".join(
+            f"  {v.to_agent_summary()}" for v in self.probable
+        ) or "  none yet"
+
+        rag_pending = [
+            c for c in self.rag_high_confidence
+            if not any(
+                v.cve_id == c["metadata"]["cve_id"]
+                for v in self.all_findings()
+            )
+        ]
+
+        return f"""
+TARGET: {self.target}
+VALIDATIONS RUN: {', '.join(self.validations_run) or 'none yet'}
+
+RAG CANDIDATES:
+  Total found: {len(self.rag_candidates)}
+  High confidence: {len(self.rag_high_confidence)}
+  Pending validation: {len(rag_pending)}
+
+CONFIRMED VULNERABILITIES ({len(self.confirmed)}):
+{confirmed_line}
+
+PROBABLE VULNERABILITIES ({len(self.probable)}):
+{probable_line}
+
+UNCONFIRMED ({len(self.unconfirmed)}):
+  {[v.cve_id for v in self.unconfirmed] or 'none'}
+
+READY FOR EXPLOITATION: {len(self.exploitable())} vulnerabilities
+ERRORS: {self.errors or 'none'}
+"""
 
