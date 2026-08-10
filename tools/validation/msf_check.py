@@ -45,8 +45,9 @@ def run_msf_check(
     
     try:
         output = client.containers.run(
-            image="metasploitframework/metasploit-framework",
-            command=["-q", "-x", msf_commands],
+            image="metasploitframework/metasploit-framework:latest",
+            command=["./msfconsole", "-q", "-x", msf_commands],
+            working_dir="/usr/src/metasploit-framework",
             remove=True,
             stderr=True,
             stdout=True,
@@ -54,7 +55,6 @@ def run_msf_check(
             dns=["8.8.8.8", "1.1.1.1"],
             mem_limit="512m",
             detach=False,
-            timeout=120,
         )
         raw = output.decode("utf-8", errors="replace")
         result["output"] = raw
