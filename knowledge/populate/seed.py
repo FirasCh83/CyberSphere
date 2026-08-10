@@ -63,7 +63,7 @@ SEED_VULNERABILITIES = [
     },
     {
         "cve_id": "CVE-2009-3843",
-        "document": "ProFTPD 1.3.1 backdoor remote code execution FTP unix",
+        "document": "ProFTPD 1.3.3c backdoor remote code execution FTP unix",
         "metadata": {
             "cve_id": "CVE-2009-3843",
             "service": "ftp",

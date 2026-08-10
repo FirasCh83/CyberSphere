@@ -97,7 +97,7 @@ class ConfirmedVulnerability:
             f"[{self.status.value.upper()}] {self.cve_id} "
             f"({self.severity.value}) "
             f"port {self.port}/{self.service} "
-            f"v{self.version} "
+            f"version={self.version} "
             f"complexity={self.exploitation_complexity.value} "
             f"msf={self.metasploit_module or 'none'} "
             f"score={self.rag_score:.2f}"
