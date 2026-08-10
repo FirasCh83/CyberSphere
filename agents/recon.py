@@ -817,7 +817,7 @@ tools = tools_nmap + tools_whois + tools_whatweb + tools_nuclei + tools_katana  
 
 target = input("Enter the target IP address or hostname: ")
 
-state = ReconState(target=target)
+
 
 System_prompt = """You are an expert penetration tester performing reconnaissance on an authorized target.
 
@@ -841,10 +841,6 @@ After each result, reason out loud:
 
 When you have gathered sufficient information, stop calling tools and summarize your findings."""
 
-messages = [
-    {"role": "system", "content": System_prompt},
-    {"role": "user", "content": f"Given the presented set of tools, Perform a reconnaissance operation on this local authorised virtual machine:{target}, follow the tools descriptions and the rules provided in the system prompt. Only call one tool at a time, wait for the result, analyze it, and then decide on the next step. Stop when you have enough information for a useful pentest report."},
-]
 
 httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
 whois_tools = {"run_whois_lookup"}
@@ -887,7 +883,7 @@ def call_tool(name, args):
 
     web_tools = katana_tools | whatweb_tools
     if name in web_tools:
-        target = build_web_targets(state)
+        target = build_web_targets(target)
     if name == "run_service_detection":
         return run_service_detection(target)
     elif name == "run_os_detection":
@@ -937,108 +933,123 @@ def call_tool(name, args):
     else:
         raise ValueError(f"Unknown tool name: {name}")
     
-while True:
-    state_message = {
-        "role": "user",
-        "content": f"Current state:\n{state.summary()}"
-    }
+def run_recon_agent(target: str) -> ReconState:
+    """
+    Runs the full recon ReAct loop, returns populated reconState for the vuln agent
+    """
+    state = ReconState(target=target)
 
-    context = (
-        [messages[0]] + [messages[1]] + [state_message]+ messages[-4:]
-    )
+    messages = [
+    {"role": "system", "content": System_prompt},
+    {"role": "user", "content": f"Given the presented set of tools, Perform a reconnaissance operation on this local authorised virtual machine:{target}, follow the tools descriptions and the rules provided in the system prompt. Only call one tool at a time, wait for the result, analyze it, and then decide on the next step. Stop when you have enough information for a useful pentest report."},
+]
 
-    completion = client.chat.completions.create(
-    model= "laguna-s-2.1:free",
-    messages= context,
-    tools=tools,
-    )
-    response_message = completion.choices[0].message
-    messages.append(response_message)
+    while True:
+        state_message = {
+            "role": "user",
+            "content": f"Current state:\n{state.summary()}"
+        }
 
-    print(f"[DEBUG] content: {response_message.content}")
-    print(f"[DEBUG] tool_calls count: {len(response_message.tool_calls) if response_message.tool_calls else 0}")    
+        context = (
+            [messages[0]] + [messages[1]] + [state_message]+ messages[-4:]
+        )
 
-    if response_message.content:
-        print("Agent's reasoning:")
-        print(response_message.content)
+        completion = client.chat.completions.create(
+        model= "laguna-s-2.1:free",
+        messages= context,
+        tools=tools,
+        )
+        response_message = completion.choices[0].message
+        messages.append(response_message)
+
+        print(f"[DEBUG] content: {response_message.content}")
+        print(f"[DEBUG] tool_calls count: {len(response_message.tool_calls) if response_message.tool_calls else 0}")    
+
+        if response_message.content:
+            print("Agent's reasoning:")
+            print(response_message.content)
     
 
-    if not response_message.tool_calls:
-        print("No tool calls detected. Stopping.")
-        print(response_message.content)
-        break
-    tool_call= response_message.tool_calls[0]
-    tool_name = tool_call.function.name
-    tool_args = json.loads(tool_call.function.arguments) 
-    print(f"Running : {tool_name}")
-    result = call_tool(tool_name, tool_args)
+        if not response_message.tool_calls:
+            print("No tool calls detected. Stopping.")
+            print(response_message.content)
+            break
+        tool_call= response_message.tool_calls[0]
+        tool_name = tool_call.function.name
+        tool_args = json.loads(tool_call.function.arguments) 
+        print(f"Running : {tool_name}")
+        result = call_tool(tool_name, tool_args)
     
 
 
-    if tool_name in httpx_tools:
-        # httpx output — don't run nmap parser on it
-        parsed = parse_httpx_output(result)
-        state.web_services.extend(parsed["web_services"])
-        state.technologies.extend(parsed["technologies"])
-        state.tls_issues.extend(parsed["tls_issues"])
-        state.missing_headers.extend(parsed["missing_headers"])
-        state.findings.extend(parsed["key_findings"])
+        if tool_name in httpx_tools:
+            # httpx output — don't run nmap parser on it
+            parsed = parse_httpx_output(result)
+            state.web_services.extend(parsed["web_services"])
+            state.technologies.extend(parsed["technologies"])
+            state.tls_issues.extend(parsed["tls_issues"])
+            state.missing_headers.extend(parsed["missing_headers"])
+            state.findings.extend(parsed["key_findings"])
 
-    elif tool_name in whois_tools:
-        parsed = parse_whois_output(result)
-        state.findings.extend(parsed["key_findings"])
+        elif tool_name in whois_tools:
+            parsed = parse_whois_output(result)
+            state.findings.extend(parsed["key_findings"])
 
-    elif tool_name in whatweb_tools:
-        parsed = parse_whatweb_output(result)
-        state.technologies.extend(parsed["technologies"])
-        state.findings.extend(parsed["key_findings"])
+        elif tool_name in whatweb_tools:
+            parsed = parse_whatweb_output(result)
+            state.technologies.extend(parsed["technologies"])
+            state.findings.extend(parsed["key_findings"])
 
-    elif tool_name in nuclei_tools:
-        parsed = parse_nuclei_output(result)
-        # evidence layer — full structured findings preserved
-        state.nuclei_findings.extend(parsed["findings"])
-        # agent layer — compact summaries only
-        state.nuclei_summary.extend(parsed["key_findings"])
-        # severity counts — accumulate across multiple nuclei scans
-        state.nuclei_critical_count += parsed["critical_count"]
-        state.nuclei_high_count += parsed["high_count"]
-        state.nuclei_medium_count += parsed["medium_count"]
-        # also push into general findings so agent sees them in state summary
-        state.findings.extend(parsed["key_findings"])
+        elif tool_name in nuclei_tools:
+            parsed = parse_nuclei_output(result)
+            # evidence layer — full structured findings preserved
+            state.nuclei_findings.extend(parsed["findings"])
+            # agent layer — compact summaries only
+            state.nuclei_summary.extend(parsed["key_findings"])
+            # severity counts — accumulate across multiple nuclei scans
+            state.nuclei_critical_count += parsed["critical_count"]
+            state.nuclei_high_count += parsed["high_count"]
+            state.nuclei_medium_count += parsed["medium_count"]
+            # also push into general findings so agent sees them in state summary
+            state.findings.extend(parsed["key_findings"])
     
-    elif tool_name in katana_tools:
-        parsed = parse_katana_output(result)
-        state.katana_endpoints.extend(parsed["endpoints"])
-        state.katana_forms.extend(parsed["forms"])
-        state.katana_interesting.extend(parsed["interesting_endpoints"])
-        state.katana_emails.extend(parsed["emails"])
-        state.katana_stats = parsed["crawl_stats"]
-        state.findings.extend(parsed["key_findings"])
+        elif tool_name in katana_tools:
+            parsed = parse_katana_output(result)
+            state.katana_endpoints.extend(parsed["endpoints"])
+            state.katana_forms.extend(parsed["forms"])
+            state.katana_interesting.extend(parsed["interesting_endpoints"])
+            state.katana_emails.extend(parsed["emails"])
+            state.katana_stats = parsed["crawl_stats"]
+            state.findings.extend(parsed["key_findings"])
 
-    else:
-        # nmap output — safe to parse as nmap
-        parsed = parse_nmap_output(result)
-        if parsed["open_ports"]:          # only update if parser found something
-            state.open_ports = parsed["open_ports"]
-            state.services = {p["port"]: p["service"] for p in parsed["open_ports"]}
-        state.findings.extend(parsed["key_findings"])
+        else:
+            # nmap output — safe to parse as nmap
+            parsed = parse_nmap_output(result)
+            if parsed["open_ports"]:          # only update if parser found something
+                state.open_ports = parsed["open_ports"]
+                state.services = {p["port"]: p["service"] for p in parsed["open_ports"]}
+            state.findings.extend(parsed["key_findings"])
 
-    state.scans_run.append(tool_name)
+        state.scans_run.append(tool_name)
     
-    print(f"Result from {tool_name}:")
-    print(result)
+        print(f"Result from {tool_name}:")
+        print(result)
 
-    messages.append(
-        {"role": "tool",
-         "tool_call_id": tool_call.id,
-         "content": f"PARSED RESULTS:\n{parsed}\n\nSTATE:\n{state.summary()}"}
-    )
+        messages.append(
+            {"role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": f"PARSED RESULTS:\n{parsed}\n\nSTATE:\n{state.summary()}"}
+        )
 
-    if not response_message.content:
-        print("No reasoning provided. Stopping.")
-        break
+        if not response_message.content:
+            print("No reasoning provided. Stopping.")
+            break
+    return state
     
     
-print(completion)
+if __name__ == "__main__":
+    target = input("Enter the target IP address or hostname: ")
+    final_state = run_recon_agent(target)
+    print(final_state.summary())
 
     
