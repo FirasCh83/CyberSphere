@@ -272,7 +272,7 @@ After each tool result reason:
     ]
 
     # ReAct loop
-    max_iterations = len(high_confidence) * 5  # max 5 tool calls per candidate
+    max_iterations = len(high_confidence) * 10 # max 10 tool calls per candidate
     iteration = 0
 
     while iteration < max_iterations:

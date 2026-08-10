@@ -5,6 +5,29 @@ from datetime import datetime
 from libnmap.parser import NmapParser, NmapParserException
 from urllib.parse import urlparse, parse_qs
 
+def _build_version_string(svc) -> str:
+    """
+    Build a clean human-readable version string from libnmap service fields.
+    
+    libnmap exposes:
+      svc.product   → 'vsftpd', 'OpenSSH', 'Apache httpd'
+      svc.version   → '2.3.4', '4.7p1 Debian 8ubuntu1'
+      svc.extrainfo → '(Ubuntu) DAV/2', 'protocol 2.0'
+      svc.ostype    → 'Unix', 'Linux'
+      svc.servicefp → huge raw fingerprint blob — never use this
+      svc.banner    → sometimes None
+    """
+    parts = []
+    
+    if svc.product:
+        parts.append(svc.product)
+    if svc.version:
+        parts.append(svc.version)
+    if svc.extrainfo:
+        parts.append(f"({svc.extrainfo})")
+    
+    return " ".join(parts).strip()
+
 
 def parse_nmap_output(raw: str) -> Dict:
     result = {
@@ -37,7 +60,7 @@ def parse_nmap_output(raw: str) -> Dict:
                 "port": svc.port,
                 "protocol": svc.protocol,
                 "service": svc.service,
-                "version": f"{svc.servicefp or ''} {svc.banner or ''}".strip(),
+                "version": _build_version_string(svc),
             }
             result["open_ports"].append(port_info)
 
