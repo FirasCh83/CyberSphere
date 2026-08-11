@@ -99,7 +99,7 @@ def _extract_script_findings(script_id, output, port, service, result):
         result["key_findings"].append(
             f"VULNERABLE [{_guess_severity(script_id, output)}] port {port} — {vuln_name}"
         )
-        return
+        return result
 
     # Anonymous FTP
     if script_id == "ftp-anon" and "allowed" in output.lower():

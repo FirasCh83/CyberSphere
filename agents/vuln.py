@@ -258,7 +258,10 @@ RULES:
 After each tool result reason:
 - What did this tell me about the candidate?
 - Is this candidate confirmed, probable, or unconfirmed?
-- What is the next validation step?"""
+- What is the next validation step?
+"CRITICAL: You must validate ALL {len(high_confidence)} candidates before stopping."
+"Currently validated: {len(vuln_state.all_findings())} of {len(high_confidence)}."
+"Do NOT stop until all candidates have been through msf_check."""
 
     messages = [
         {"role": "system", "content": system_prompt},

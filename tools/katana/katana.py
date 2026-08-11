@@ -7,7 +7,11 @@ def run_basic_crawl(target: str) -> List[str]:
         "-u",
         target,
         "-jsonl", 
-        "-silent"
+        "-silent",
+        "-c", "5",   # max 5 concurrent requests
+        "-max-depth", "3" # max depth of 3
+        "-ps", "200" # max 200 pages
+
     ])
 
 def run_deep_crawl(target: str) -> List[str]:
@@ -17,7 +21,10 @@ def run_deep_crawl(target: str) -> List[str]:
         "-jsonl", 
         "-d",
         "5",
-        "-silent"
+        "-silent",
+        "-c", "5",   # max 5 concurrent requests
+        "-max-depth", "3" # max depth of 3
+        "-ps", "200" # max 200 pages
     ])
 
 def run_js_crawl(target: str) -> List[str]:
@@ -26,7 +33,10 @@ def run_js_crawl(target: str) -> List[str]:
         target,
         "-jsonl", 
         "-jc",
-        "-silent"
+        "-silent",
+        "-c", "5",   # max 5 concurrent requests
+        "-max-depth", "3" # max depth of 3
+        "-ps", "200" # max 200 pages
     ])
 
 def run_form_discovery(target: str) -> List[str]:
@@ -35,7 +45,10 @@ def run_form_discovery(target: str) -> List[str]:
         target,
         "-jsonl", 
         "-form",
-        "-silent"
+        "-silent",
+        "-c", "5",   # max 5 concurrent requests
+        "-max-depth", "3" # max depth of 3
+        "-ps", "200" # max 200 pages
     ])
 
 def run_passive_crawl(target: str) -> List[str]:
@@ -44,5 +57,8 @@ def run_passive_crawl(target: str) -> List[str]:
         target,
         "-jsonl", 
         "-passive",
-        "-silent"
+        "-silent",
+        "-c", "5",   # max 5 concurrent requests
+        "-max-depth", "3" # max depth of 3
+        "-ps", "200" # max 200 pages
     ])
