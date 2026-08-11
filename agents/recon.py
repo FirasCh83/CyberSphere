@@ -1015,7 +1015,10 @@ def run_recon_agent(target: str) -> ReconState:
             state.nuclei_high_count += parsed["high_count"]
             state.nuclei_medium_count += parsed["medium_count"]
             # also push into general findings so agent sees them in state summary
-            state.findings.extend(parsed["key_findings"])
+            state.findings.extend([
+                f for f in parsed["key_findings"]
+                if not f.startswith("Nuclei:")  # avoid double-counting
+            ])
     
         elif tool_name in katana_tools:
             parsed = parse_katana_output(result)
