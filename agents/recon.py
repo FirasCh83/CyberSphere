@@ -964,10 +964,14 @@ def run_recon_agent(target: str) -> ReconState:
 
         print(f"[DEBUG] content: {response_message.content}")
         print(f"[DEBUG] tool_calls count: {len(response_message.tool_calls) if response_message.tool_calls else 0}")    
+        reasoning = (
+            getattr(response_message, "reasoning", None)
+            or response_message.content
+            or None
+        )
 
-        if response_message.content:
-            print("Agent's reasoning:")
-            print(response_message.content)
+        if reasoning:
+            print(f"Agent's reasoning: {reasoning}")
     
 
         if not response_message.tool_calls:
@@ -1041,19 +1045,7 @@ def run_recon_agent(target: str) -> ReconState:
             "content": f"PARSED RESULTS:\n{parsed}\n\nSTATE:\n{state.summary()}"}
         )
 
-        reasoning = (
-            getattr(response_message, "reasoning", None)
-            or response_message.content
-            or None
-        )
 
-        if reasoning:
-            print(f"Agent's reasoning: {reasoning}")
-        
-        if not response_message.tool_calls:
-            print("Agent finished")
-            print(response_message.content)
-            break
     return state
     
     
