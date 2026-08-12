@@ -12,3 +12,5 @@ venv/
 .mypy_cache/
 *.txt
 test*.py
+knowledge/cache/*.json
+knowledge/cache/*.json.gz
