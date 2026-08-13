@@ -97,6 +97,7 @@ class VulnKnowledgeBase:
 
             # semantic search for this service
             candidates = self.query_by_service(service, version, port)
+            candidates = candidates[:3]
 
             for candidate in candidates:
                 cve_id = candidate["metadata"].get("cve_id", "")
@@ -176,7 +177,17 @@ class VulnKnowledgeBase:
                 if value.lower() in os_guess.lower():
                     matched += 1
 
-        return matched / len(needed)
+        score = matched / len(needed)
+        product_meta = metadata.get("product", "").lower()
+        port_version = port_info.get("version", "").lower()
+
+        if product_meta and port_version:
+            meta_words = set(product_meta.split())
+            version_words = set(port_version.replace("/", " ").split())
+            if meta_words and version_words and not meta_words & version_words:
+                score *= 0.5  # penalize if product/version mismatch
+
+        return score
 
     def get_high_confidence_candidates(
         self,

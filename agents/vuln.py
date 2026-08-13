@@ -192,7 +192,7 @@ def run_vuln_agent(recon_state: ReconState) -> VulnState:
     all_candidates = kb.match_against_recon(recon_state)
     vuln_state.rag_candidates = all_candidates
 
-    high_confidence = [c for c in all_candidates if c["combined_score"] >= 0.6]
+    high_confidence = [c for c in all_candidates if c["combined_score"] >= 0.75]
     vuln_state.rag_high_confidence = high_confidence
 
     print(f"[VulnAgent] RAG found {len(all_candidates)} candidates")
