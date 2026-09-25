@@ -1,0 +1,38 @@
+{
+  "name": "cybersphere",
+  "version": "1.0.0",
+  "description": "Multi-agent AI penetration testing platform",
+  "homepage": "https://github.com/FirasCh83/CyberSphere#readme",
+  "bugs": {
+    "url": "https://github.com/FirasCh83/CyberSphere/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FirasCh83/CyberSphere.git"
+  },
+  "license": "ISC",
+  "author": "Firas",
+  "type": "commonjs",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "build": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "autoprefixer": "^10.6.0",
+    "concurrently": "^10.0.5",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.3.0",
+    "wait-on": "^9.1.0"
+  }
+}

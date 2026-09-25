@@ -1,16 +1,27 @@
+# ---- Secrets ----
 .env
-venv
-db
-__pycache__
+.env.*
+!.env.example
+
+# ---- Python ----
 __pycache__/
 *.py[cod]
 *.pyo
 .venv/
 venv/
-.env
 .pytest_cache/
 .mypy_cache/
-*.txt
-test*.py
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+dist-electron/
+
+# ---- Knowledge base (rebuild via knowledge/populate) ----
+db/
 knowledge/cache/*.json
 knowledge/cache/*.json.gz
+
+# ---- Local scratch notes ----
+TODO.txt
+field_test.txt

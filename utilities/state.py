@@ -1,13 +1,25 @@
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Dict, Union
+
+
+def _port_label(entry) -> str:
+    """Normalize an open_ports entry to a printable label.
+
+    open_ports entries are supposed to be dicts with a 'port' key, but
+    the agent/tool loop occasionally coerces them to plain ints or
+    strings. Handle all three so summary() never KeyErrors.
+    """
+    if isinstance(entry, dict):
+        return str(entry.get("port", "?"))
+    return str(entry)
+
 
 @dataclass
 class ReconState:
     target: str
     scans_run: List[str] = field(default_factory=list)
-    open_ports: List[dict] = field(default_factory=list)
+    open_ports: List[Union[dict, int, str]] = field(default_factory=list)
     services: Dict[int, str] = field(default_factory=dict)
-    findings: List[str] = field(default_factory=list)
     os_guess: str = ""
 
     #Httpx addition
@@ -54,7 +66,7 @@ TARGET: {self.target}
 SCANS RUN: {', '.join(self.scans_run) or 'none yet'}
 
 NETWORK:
-  Open ports: {[p['port'] for p in self.open_ports] or 'unknown'}
+  Open ports: {[_port_label(p) for p in self.open_ports] or 'unknown'}
   Services: {self.services or 'unknown'}
 
 WEB:

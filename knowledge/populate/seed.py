@@ -24,10 +24,10 @@ SEED_VULNERABILITIES = [
         }
     },
     {
-        "cve_id": "CVE-2010-3333",
+        "cve_id": "CVE-2010-2075",
         "document": "UnrealIRCd 3.2.8.1 IRC server backdoor remote code execution",
         "metadata": {
-            "cve_id": "CVE-2010-3333",
+            "cve_id": "CVE-2010-2075",
             "service": "irc",
             "product": "unrealircd",
             "version_affected": "3.2.8.1",
@@ -62,20 +62,20 @@ SEED_VULNERABILITIES = [
         }
     },
     {
-        "cve_id": "CVE-2009-3843",
+        "cve_id": "CVE-2010-20103",
         "document": "ProFTPD 1.3.3c backdoor remote code execution FTP unix",
         "metadata": {
-            "cve_id": "CVE-2009-3843",
+            "cve_id": "CVE-2010-20103",
             "service": "ftp",
             "product": "proftpd",
-            "version_affected": "1.3.1",
+            "version_affected": "1.3.3c",
             "cvss_score": 10.0,
             "severity": "critical",
             "exploitation_complexity": "low",
             "requires_auth": False,
             "metasploit_module": "exploit/unix/ftp/proftpd_133c_backdoor",
             "validation_method": "connect to port 6200 after trigger",
-            "evidence_needed": ["port:2121", "product:proftpd", "version:1.3.1"],
+            "evidence_needed": ["port:2121", "product:proftpd", "version:1.3.3c"],
             "tags": "backdoor rce ftp",
             "source": "nvd",
         }

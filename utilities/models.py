@@ -17,7 +17,8 @@ class ExploitationComplexity(str, Enum):
 class ValidationStatus(str, Enum):
     CONFIRMED = "confirmed"         # active validation passed
     PROBABLE = "probable"           # high RAG confidence, validation inconclusive
-    UNCONFIRMED = "unconfirmed"     # RAG match only, no active validation run
+    UNCONFIRMED = "unconfirmed"     # RAG match only, active validation run but negative/inconclusive
+    ADVISORY = "advisory"           # RAG match with no exploit module — informational only, never validated
 
 
 @dataclass
@@ -83,6 +84,7 @@ class ConfirmedVulnerability:
             ValidationStatus.CONFIRMED: 1.0,
             ValidationStatus.PROBABLE: 0.7,
             ValidationStatus.UNCONFIRMED: 0.3,
+            ValidationStatus.ADVISORY: 0.1,
         }
 
         return (
@@ -147,6 +149,10 @@ class VulnState:
     probable: List[ConfirmedVulnerability] = field(default_factory=list)
     unconfirmed: List[ConfirmedVulnerability] = field(default_factory=list)
 
+    # advisory : RAG matches with no exploit module — reported as potential
+    # exposure for manual review, never sent through active validation.
+    advisory: List[ConfirmedVulnerability] = field(default_factory=list)
+
     # tracking
     validations_run: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
@@ -195,6 +201,9 @@ PROBABLE VULNERABILITIES ({len(self.probable)}):
 
 UNCONFIRMED ({len(self.unconfirmed)}):
   {[v.cve_id for v in self.unconfirmed] or 'none'}
+
+ADVISORY — no exploit module, manual review ({len(self.advisory)}):
+  {[v.cve_id for v in self.advisory] or 'none'}
 
 READY FOR EXPLOITATION: {len(self.exploitable())} vulnerabilities
 ERRORS: {self.errors or 'none'}

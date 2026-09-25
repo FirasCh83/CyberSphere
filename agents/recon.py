@@ -1,7 +1,31 @@
 import json
 import os
+import time
+import logging
 from dotenv import load_dotenv
 from openai import OpenAI
+from openai import APIConnectionError, APITimeoutError, RateLimitError, InternalServerError
+
+logger = logging.getLogger("recon_agent")
+
+
+def _llm_create_with_retry(client, max_attempts: int = 4, **kwargs):
+    """LLM call with exponential backoff — 'openrouter/free' is rate-limited."""
+    last_exc = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return client.chat.completions.create(**kwargs)
+        except (RateLimitError, APIConnectionError, APITimeoutError,
+                InternalServerError) as e:
+            last_exc = e
+            if attempt == max_attempts:
+                break
+            wait = min(2 ** attempt, 30)
+            print(f"[ReconAgent] LLM attempt {attempt}/{max_attempts} "
+                  f"({type(e).__name__}) — retrying in {wait}s")
+            time.sleep(wait)
+    print(f"[ReconAgent] LLM call failed after {max_attempts} attempts: {last_exc}")
+    raise last_exc
 from pydantic import BaseModel, Field
 from tools.nmap.nmap import run_service_detection, run_os_detection, run_default_scripts, run_udp_scan, run_vulnerability_scan, run_full_port_scan
 """ from tools.httpx.httpx import run_http_probe, run_http_tls_analysis, run_http_header_analysis """
@@ -11,12 +35,17 @@ from tools.nuclei.nuclei import run_cve_scan, run_rce_scan, run_exposure_scan, r
 from tools.katana.katana import run_basic_crawl, run_deep_crawl, run_js_crawl, run_form_discovery,run_passive_crawl 
 from utilities.state import ReconState
 from utilities.parser import parse_nmap_output, parse_whois_output, parse_httpx_output, parse_whatweb_output, parse_nuclei_output, parse_katana_output
+from utilities import events
 import json
 
 load_dotenv()
+
+# Central LLM config — override in .env. Defaults to the OpenRouter endpoint.
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://vyceai.com/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-4-6")
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY")
+    base_url=LLM_BASE_URL,
+    api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
 #(TODO) make sure that the agent follows each web finding and pass it to the whatweb tool for fingerprinting, and then pass the results to the next tool in the chain.
@@ -815,7 +844,6 @@ tools_katana = [
 
 tools = tools_nmap + tools_whois + tools_whatweb + tools_nuclei + tools_katana  # + tools_httpx
 
-target = input("Enter the target IP address or hostname: ")
 
 
 
@@ -834,12 +862,25 @@ RULES:
 - Only run deeper/slower scans if earlier results justify it
 - Stop when you have enough information for a useful pentest report
 
+EVIDENCE DISCIPLINE (critical — you are a reconnaissance agent, not a vulnerability database):
+- Report ONLY what the tools actually returned: open ports, detected service versions,
+  banners, technologies, and misconfigurations.
+- NEVER state a CVE identifier or a CVSS score from memory. Cite a CVE ONLY if it appears
+  verbatim in a tool's output (e.g. a nuclei finding). If no tool reported a CVE, do not name one.
+- Describe evidence, not conclusions. Say "vsftpd 2.3.4 banner observed on port 21", not
+  "confirmed vsftpd backdoor CVE-XXXX-XXXX".
+- Mark inference clearly: use "appears to run", "banner suggests", "possibly vulnerable" —
+  never "confirmed", "critical exploitability", or a definitive verdict. You do not validate.
+- CVE matching, severity, and confirmation are performed downstream by the vulnerability agent
+  (RAG + live Metasploit validation). Your job is to hand off accurate observations, not verdicts.
+
 After each result, reason out loud:
 - What did I find?
 - Does this change my plan?
 - What is the single most valuable next scan, or should I stop?
 
-When you have gathered sufficient information, stop calling tools and summarize your findings."""
+When you have gathered sufficient information, stop calling tools and summarize your
+OBSERVATIONS (versions, banners, misconfigurations) — without inventing CVE ids or verdicts."""
 
 
 httpx_tools = {"run_http_probe", "run_http_tls_analysis", "run_http_header_analysis"}
@@ -855,6 +896,51 @@ katana_tools = {
     "run_form_discovery", "run_passive_crawl",
 }
 
+# UI streaming: map each tool to the shell-style command line + tool family
+# shown in the conversation's command cards.
+_RECON_CMD = {
+    "run_service_detection":     "nmap -sV -Pn -T4 {t}",
+    "run_default_scripts":       "nmap -sC -sV -Pn -T4 {t}",
+    "run_vulnerability_scan":    "nmap -sV --script vuln -Pn -T4 {t}",
+    "run_os_detection":          "nmap -O -Pn -T4 {t}",
+    "run_full_port_scan":        "nmap -p- -Pn -T4 {t}",
+    "run_udp_scan":              "nmap -sU -Pn -T3 {t}",
+    "run_whois_lookup":          "whois {t}",
+    "run_basic_fingerprint":     "whatweb {t}",
+    "run_aggressive_fingerprint":"whatweb -a 3 {t}",
+    "run_full_fingerprint":      "whatweb -a 4 {t}",
+    "run_cve_scan":              "nuclei -u {t} -tags cve",
+    "run_rce_scan":              "nuclei -u {t} -tags rce",
+    "run_exposure_scan":         "nuclei -u {t} -tags exposure",
+    "run_misconfiguration_scan": "nuclei -u {t} -tags misconfig",
+    "run_default_login_scan":    "nuclei -u {t} -tags default-login",
+    "run_apache_scan":           "nuclei -u {t} -tags apache",
+    "run_tomcat_scan":           "nuclei -u {t} -tags tomcat",
+    "run_wordpress_scan":        "nuclei -u {t} -tags wordpress",
+    "run_basic_crawl":           "katana -u {t} -jsonl -silent",
+    "run_deep_crawl":            "katana -u {t} -jsonl -d 5 -silent",
+    "run_js_crawl":              "katana -u {t} -jsonl -jc -silent",
+    "run_form_discovery":        "katana -u {t} -jsonl -form -silent",
+    "run_passive_crawl":         "katana -u {t} -jsonl -passive -silent",
+}
+
+
+def _tool_family(name: str) -> str:
+    if name in nuclei_tools:
+        return "nuclei"
+    if name in whatweb_tools:
+        return "whatweb"
+    if name in katana_tools:
+        return "katana"
+    if name in whois_tools:
+        return "whois"
+    return "nmap"
+
+
+def _recon_cmd(name: str, target: str) -> str:
+    return _RECON_CMD.get(name, name + " {t}").format(t=target)
+
+
 def build_web_targets(state: ReconState) -> str:
     """
     Build comma-separated URL list from ports already discovered by nmap.
@@ -867,9 +953,18 @@ def build_web_targets(state: ReconState) -> str:
     
     urls = []
     for port_info in state.open_ports:
-        port = port_info["port"]
-        service = port_info.get("service", "")
-        
+        if isinstance(port_info, dict):
+            port = port_info["port"]
+            service = port_info.get("service", "")
+        else:
+            # tolerate plain int/str entries
+            port = port_info
+            service = ""
+        try:
+            port = int(port)
+        except (ValueError, TypeError):
+            continue
+
         if service in http_services or port in [80, 443, 8080, 8180, 8443, 8000, 8888]:
             scheme = "https" if port in [443, 8443] else "http"
             urls.append(f"{scheme}://{state.target}:{port}")
@@ -932,19 +1027,105 @@ def call_tool(name, args, state: ReconState):
         return run_passive_crawl(target)
     else:
         raise ValueError(f"Unknown tool name: {name}")
-    
+
+
+# ---------------------------------------------------------------------------
+# Completion gate — recon used to hand off the instant the LLM emitted no tool
+# call, sometimes after just an nmap + a single nuclei pass. These helpers let
+# the loop notice an obviously premature stop (web ports never fingerprinted,
+# no vuln scan at all, coverage too thin) and nudge the agent to keep going.
+# The gate only *questions* an early stop; the agent still decides what to run,
+# and a nudge budget guarantees the loop always terminates.
+# ---------------------------------------------------------------------------
+
+# ports that usually speak HTTP(S) or an app protocol worth web-enumerating
+_WEB_PORTS = {80, 81, 443, 591, 3000, 5000, 8000, 8008, 8009, 8080, 8081,
+              8090, 8180, 8443, 8834, 8888, 8983, 9000, 9080, 9090, 9200, 9443}
+
+
+def _port_num(entry):
+    """Pull an int port out of an open_ports entry (dict | int | str)."""
+    if isinstance(entry, dict):
+        entry = entry.get("port")
+    try:
+        return int(str(entry).split("/")[0])
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def _web_ports(state) -> list:
+    """Open ports that look like web/app services, by number or service label."""
+    web = set()
+    for p in state.open_ports:
+        n = _port_num(p)
+        if n is None:
+            continue
+        svc = str(p.get("service", "")) if isinstance(p, dict) else ""
+        svc = svc or str(state.services.get(n, ""))
+        if n in _WEB_PORTS or any(k in svc.lower() for k in ("http", "ajp", "web")):
+            web.add(n)
+    return sorted(web)
+
+
+def _coverage_gaps(state, tools_used: set) -> list:
+    """Return human-readable coverage gaps if recon looks premature; else []."""
+    gaps = []
+    ran_nuclei  = bool(tools_used & nuclei_tools)
+    ran_whatweb = bool(tools_used & whatweb_tools)
+    ran_katana  = bool(tools_used & katana_tools)
+
+    # 1. ports are open but nothing was ever scanned for vulnerabilities
+    if state.open_ports and not ran_nuclei:
+        gaps.append("no Nuclei vulnerability scan has run yet against any service")
+
+    # 2. web ports discovered but never fingerprinted / crawled
+    web = _web_ports(state)
+    if web:
+        ports_str = ", ".join(str(p) for p in web)
+        if not ran_whatweb:
+            gaps.append(f"open web port(s) {ports_str} have not been fingerprinted with WhatWeb")
+        if not ran_katana:
+            gaps.append(f"open web port(s) {ports_str} have not been crawled with Katana")
+
+    # 3. suspiciously shallow: many ports open, very few recon actions taken
+    if len(state.open_ports) >= 5 and len(tools_used) < 3:
+        gaps.append(
+            f"{len(state.open_ports)} ports are open but only {len(tools_used)} "
+            f"recon action(s) have run — coverage is thin"
+        )
+    return gaps
+
+
 def run_recon_agent(target: str) -> ReconState:
     """
     Runs the full recon ReAct loop, returns populated reconState for the vuln agent
     """
     state = ReconState(target=target)
 
+    events.phase("Recon Agent", "reconnaissance")
+
     messages = [
     {"role": "system", "content": System_prompt},
     {"role": "user", "content": f"Given the presented set of tools, Perform a reconnaissance operation on this local authorised virtual machine:{target}, follow the tools descriptions and the rules provided in the system prompt. Only call one tool at a time, wait for the result, analyze it, and then decide on the next step. Stop when you have enough information for a useful pentest report."},
 ]
 
+    tools_used = set()      # every tool name the agent has actually run
+    nudges_used = 0         # completion-gate nudges spent
+    steps = 0               # total loop iterations, runaway guard
+    MAX_NUDGES = 2          # how many times the gate may refuse a premature stop
+    MAX_STEPS = 40          # hard ceiling so the loop can never run away
+
     while True:
+        if steps >= MAX_STEPS:
+            print(f"[GATE] hit MAX_STEPS ({MAX_STEPS}) — forcing handoff.")
+            events.thought(
+                f"Reached the recon step ceiling ({MAX_STEPS} actions). "
+                f"Handing off with what we have.",
+                who="completion gate",
+            )
+            break
+        steps += 1
+
         state_message = {
             "role": "user",
             "content": f"Current state:\n{state.summary()}"
@@ -954,8 +1135,9 @@ def run_recon_agent(target: str) -> ReconState:
             [messages[0]] + [messages[1]] + [state_message]+ messages[-4:]
         )
 
-        completion = client.chat.completions.create(
-        model= "openrouter/free",
+        completion = _llm_create_with_retry(
+        client,
+        model=LLM_MODEL,
         messages= context,
         tools=tools,
         )
@@ -972,17 +1154,54 @@ def run_recon_agent(target: str) -> ReconState:
 
         if reasoning:
             print(f"Agent's reasoning: {reasoning}")
-    
+            events.thought(reasoning)
+
 
         if not response_message.tool_calls:
+            gaps = _coverage_gaps(state, tools_used)
+            if gaps and nudges_used < MAX_NUDGES:
+                nudges_used += 1
+                gap_text = "; ".join(gaps)
+                print(f"[GATE] premature stop — nudging ({nudges_used}/{MAX_NUDGES}): {gap_text}")
+                events.thought(
+                    f"Holding the handoff — coverage still looks thin: {gap_text}. "
+                    f"Continuing recon.",
+                    who="completion gate",
+                )
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "Before handing off to the vulnerability agent, this recon looks "
+                        f"incomplete: {gap_text}. Use the appropriate tool(s) to close these "
+                        "gaps now. If a gap genuinely cannot be addressed (for example a tool "
+                        "is not applicable to this target), briefly say why, then you may stop."
+                    ),
+                })
+                continue
             print("No tool calls detected. Stopping.")
             print(response_message.content)
+            events.thought(response_message.content, who="summary")
             break
         tool_call= response_message.tool_calls[0]
         tool_name = tool_call.function.name
-        tool_args = json.loads(tool_call.function.arguments) 
+        tool_args = json.loads(tool_call.function.arguments)
+        tools_used.add(tool_name)
         print(f"Running : {tool_name}")
-        result = call_tool(tool_name, tool_args, state)
+
+        # stream the command card (spinner + live timer) while it runs
+        web_tools = katana_tools | whatweb_tools
+        resolved_target = (
+            build_web_targets(state) if tool_name in web_tools
+            else tool_args.get("target", target)
+        )
+        _cid = events.tool_start(_tool_family(tool_name), _recon_cmd(tool_name, resolved_target))
+        _t0 = time.time()
+        try:
+            result = call_tool(tool_name, tool_args, state)
+            events.tool_end(_cid, time.time() - _t0, result, ok=True)
+        except Exception as _e:
+            events.tool_end(_cid, time.time() - _t0, f"{type(_e).__name__}: {_e}", ok=False)
+            raise
     
 
 
@@ -1053,7 +1272,8 @@ def run_recon_agent(target: str) -> ReconState:
     
     
 if __name__ == "__main__":
-    target = input("Enter the target IP address or hostname: ")
+    import sys
+    target = sys.argv[1] if len(sys.argv) > 1 else input("Enter the target IP address or hostname: ")
     final_state = run_recon_agent(target)
     print(final_state.summary())
 

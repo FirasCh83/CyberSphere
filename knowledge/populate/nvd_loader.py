@@ -35,8 +35,8 @@ TARGET_PRODUCTS = {
 MSF_MODULE_MAP = {
     "CVE-2011-2523": "exploit/unix/ftp/vsftpd_234_backdoor",
     "CVE-2007-2447": "exploit/multi/samba/usermap_script",
-    "CVE-2010-3333": "exploit/unix/irc/unreal_ircd_3281_backdoor",
-    "CVE-2009-3843": "exploit/unix/ftp/proftpd_133c_backdoor",
+    "CVE-2010-2075": "exploit/unix/irc/unreal_ircd_3281_backdoor",
+    "CVE-2010-20103": "exploit/unix/ftp/proftpd_133c_backdoor",
     "CVE-2020-1938": "auxiliary/admin/http/tomcat_ghostcat",
     "CVE-2004-2687": "exploit/unix/misc/distcc_exec",
     "CVE-2008-4250": "exploit/windows/smb/ms08_067_netapi",

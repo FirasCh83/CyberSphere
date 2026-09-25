@@ -1,7 +1,60 @@
 import chromadb
+import json
+import re
 from chromadb.utils import embedding_functions
-from typing import List, Dict
+from typing import List, Dict, Optional
 from utilities.state import ReconState
+
+
+def _port_of(entry) -> int:
+    """Extract a numeric port from either the dict shape or a plain int/str."""
+    if isinstance(entry, dict):
+        return int(entry["port"])
+    return int(entry)
+
+
+def _parse_version(text: str) -> Optional[tuple]:
+    """Pull the first dotted numeric version out of free text → tuple of ints.
+
+    'Apache httpd 2.4.49 ((Unix))' -> (2, 4, 49). Returns None if none found,
+    so callers can treat 'unknown version' as 'can't decide' rather than a
+    false mismatch.
+    """
+    if not text:
+        return None
+    m = re.search(r"(\d+(?:\.\d+){1,3})", str(text))
+    if not m:
+        return None
+    try:
+        return tuple(int(x) for x in m.group(1).split("."))
+    except ValueError:
+        return None
+
+
+def _version_in_range(detected: tuple, rng: dict) -> Optional[bool]:
+    """Is `detected` inside the CPE version range from NVD metadata?
+
+    Returns True/False, or None when the range carries no usable bounds (so the
+    caller stays neutral instead of penalising). Bounds come straight from the
+    NVD 2.0 cpeMatch fields the loader preserved.
+    """
+    lo_inc = _parse_version(rng.get("version_start_including", ""))
+    lo_exc = _parse_version(rng.get("version_start_excluding", ""))
+    hi_inc = _parse_version(rng.get("version_end_including", ""))
+    hi_exc = _parse_version(rng.get("version_end_excluding", ""))
+    if not any([lo_inc, lo_exc, hi_inc, hi_exc]):
+        return None
+
+    if lo_inc is not None and detected < lo_inc:
+        return False
+    if lo_exc is not None and detected <= lo_exc:
+        return False
+    if hi_inc is not None and detected > hi_inc:
+        return False
+    if hi_exc is not None and detected >= hi_exc:
+        return False
+    return True
+
 
 class VulnKnowledgeBase:
     def __init__(self, persist_path: str = "./knowledge/db"):
@@ -88,9 +141,15 @@ class VulnKnowledgeBase:
         seen = set()
 
         for port_info in recon_state.open_ports:
-            port = port_info["port"]
-            service = port_info.get("service", "")
-            version = port_info.get("version", "")
+            # tolerate plain int/str entries alongside the normal dict shape
+            if isinstance(port_info, dict):
+                port = port_info["port"]
+                service = port_info.get("service", "")
+                version = port_info.get("version", "")
+            else:
+                port = port_info
+                service = ""
+                version = ""
 
             if not service:
                 continue
@@ -156,20 +215,20 @@ class VulnKnowledgeBase:
                 continue
 
             if key == "port":
-                if any(int(p["port"]) == int(value)
+                if any(int(_port_of(p)) == int(value)
                        for p in recon_state.open_ports):
                     matched += 1
 
             elif key == "service":
-                if value.lower() in port_info.get("service", "").lower():
+                if isinstance(port_info, dict) and value.lower() in port_info.get("service", "").lower():
                     matched += 1
 
             elif key == "product":
-                if value.lower() in port_info.get("version", "").lower():
+                if isinstance(port_info, dict) and value.lower() in port_info.get("version", "").lower():
                     matched += 1
 
             elif key == "version":
-                if value in port_info.get("version", ""):
+                if isinstance(port_info, dict) and value in port_info.get("version", ""):
                     matched += 1
 
             elif key == "os":
@@ -179,13 +238,31 @@ class VulnKnowledgeBase:
 
         score = matched / len(needed)
         product_meta = metadata.get("product", "").lower()
-        port_version = port_info.get("version", "").lower()
+        port_version = (port_info.get("version", "") if isinstance(port_info, dict) else "").lower()
 
         if product_meta and port_version:
             meta_words = set(product_meta.split())
             version_words = set(port_version.replace("/", " ").split())
             if meta_words and version_words and not meta_words & version_words:
-                score *= 0.5  # penalize if product/version mismatch
+                score *= 0.8  # soft penalty if product/version mismatch
+
+        # version-range gate — the strongest signal for bulk NVD entries. These
+        # carry CPE version bounds (versionStart*/versionEnd*), so if we actually
+        # detected a version on the port we can tell whether this CVE even applies
+        # to that build. Out-of-range → hard penalty (kills modern CVEs matched to
+        # ancient services on port/keyword alone); in-range → confidence boost.
+        detected = _parse_version(port_version)
+        raw_range = metadata.get("version_range", "")
+        if detected is not None and raw_range and raw_range not in ("{}", "null"):
+            try:
+                rng = json.loads(raw_range)
+            except (TypeError, ValueError):
+                rng = {}
+            verdict = _version_in_range(detected, rng) if rng else None
+            if verdict is False:
+                score *= 0.25          # affected range excludes this build
+            elif verdict is True:
+                score = min(1.0, score + 0.25)  # confirmed in affected range
 
         return score
 
